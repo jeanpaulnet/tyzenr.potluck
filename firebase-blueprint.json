@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "Guest": {
+      "title": "Guest",
+      "description": "A guest attending the potluck",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Dish": {
+      "title": "Dish",
+      "description": "A dish brought to the potluck",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "count": { "type": "number" },
+        "ownerIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["id", "name", "count"]
+    },
+    "Potluck": {
+      "title": "Potluck",
+      "description": "A potluck event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "guests": {
+          "type": "array",
+          "items": { "$ref": "Guest" }
+        },
+        "dishes": {
+          "type": "array",
+          "items": { "$ref": "Dish" }
+        }
+      },
+      "required": ["id", "title", "ownerId", "createdAt"]
+    },
+    "HistoryEntry": {
+      "title": "HistoryEntry",
+      "description": "A record of a change made to a potluck",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/potlucks/{potluckId}": {
+      "schema": "Potluck",
+      "description": "Collection of potluck events"
+    },
+    "/potlucks/{potluckId}/history/{historyId}": {
+      "schema": "HistoryEntry",
+      "description": "History of changes for a specific potluck"
+    }
+  }
+}

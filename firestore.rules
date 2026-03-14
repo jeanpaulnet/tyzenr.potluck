@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: potlucks
+    // Document ID: guid
+    // Fields:
+    //   - id: string (required)
+    //   - title: string (required)
+    //   - ownerId: string (required, immutable)
+    //   - createdAt: timestamp (required, immutable)
+    //   - guests: list of maps (optional)
+    //   - dishes: list of maps (optional)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.ownerId;
+    }
+
+    function isValidPotluck(data) {
+      return data.id is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.ownerId is string &&
+             data.createdAt is timestamp;
+    }
+
+    match /potlucks/{potluckId} {
+      // Viewing does not require signin
+      allow read: if true;
+
+      // Create requires signin and ownerId must match auth.uid
+      allow create: if isAuthenticated() && 
+                      isValidPotluck(request.resource.data) &&
+                      request.resource.data.ownerId == request.auth.uid;
+
+      // Update does not require signin
+      allow update: if isValidPotluck(request.resource.data) && 
+                      request.resource.data.ownerId == resource.data.ownerId &&
+                      request.resource.data.createdAt == resource.data.createdAt;
+
+      // Delete requires signin and must be the owner
+      allow delete: if isAuthenticated() && isDocOwner();
+
+      match /history/{historyId} {
+        allow read: if true;
+        allow create: if request.resource.data.timestamp == request.time;
+      }
+    }
+  }
+}

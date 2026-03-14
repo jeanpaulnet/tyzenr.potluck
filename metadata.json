@@ -1,0 +1,5 @@
+{
+  "name": "Potluck Planner",
+  "description": "Plan and coordinate potlucks with friends. Create entries, manage guest lists, and track dishes. Requires Google SSO for editing.",
+  "requestFramePermissions": []
+}
