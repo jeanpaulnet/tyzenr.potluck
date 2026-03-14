@@ -44,11 +44,9 @@ import {
   X,
   History,
   Search,
-  ExternalLink,
-  Sparkles
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
-import { GoogleGenAI } from "@google/genai";
 
 // --- Types ---
 
@@ -121,7 +119,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 interface Guest {
   id: string;
   name: string;
-  imageUrl?: string;
 }
 
 interface Dish {
@@ -773,6 +770,111 @@ const DishItem: React.FC<DishItemProps> = ({
   );
 };
 
+interface GuestItemProps {
+  key?: string;
+  guest: Guest;
+  potluck: Potluck;
+  canEdit: boolean;
+  updateGuest: (id: string, name: string) => void;
+  removeGuest: (id: string) => void;
+  handleSave: (updatedPotluck?: any, action?: string) => Promise<void>;
+}
+
+const GuestItem = ({ guest, potluck, canEdit, updateGuest, removeGuest, handleSave }: GuestItemProps) => {
+  const controls = useDragControls();
+
+  return (
+    <Reorder.Item 
+      value={guest}
+      dragControls={controls}
+      dragListener={false}
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="flex items-center gap-3 group relative pl-10"
+    >
+      {canEdit && (
+        <div 
+          onPointerDown={(e) => controls.start(e)}
+          className="absolute top-1/2 -translate-y-1/2 left-2 p-2 text-zinc-400 cursor-grab active:cursor-grabbing hover:text-zinc-600 transition-colors z-20"
+        >
+          <div className="grid grid-cols-2 gap-1">
+            <div className="w-1.5 h-1.5 bg-current rounded-full opacity-60" />
+            <div className="w-1.5 h-1.5 bg-current rounded-full opacity-60" />
+            <div className="w-1.5 h-1.5 bg-current rounded-full opacity-60" />
+            <div className="w-1.5 h-1.5 bg-current rounded-full opacity-60" />
+          </div>
+        </div>
+      )}
+
+      {canEdit ? (
+        <>
+          <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl flex-shrink-0 border border-black/5 bg-purple-50 flex items-center justify-center text-purple-500">
+              <Users size={16} />
+            </div>
+            <div className="relative min-w-[120px]">
+              <span className="invisible whitespace-pre px-4 py-2 block min-h-[42px]">{guest.name || "Guest name"}</span>
+              <input 
+                type="text" 
+                value={guest.name}
+                placeholder="Guest name"
+                onChange={(e) => updateGuest(guest.id, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSave();
+                    e.currentTarget.blur();
+                  }
+                }}
+                onBlur={() => handleSave()}
+                className="absolute inset-0 w-full px-4 py-2 bg-zinc-200 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all"
+              />
+            </div>
+          </div>
+          <div className="flex-1 flex flex-wrap gap-1 justify-end">
+            {potluck.dishes.filter(d => d.ownerIds.includes(guest.id)).map(d => (
+              <div 
+                key={d.id} 
+                title={d.name || "Unnamed Dish"}
+                className="px-2 py-0.5 bg-white border border-black/5 rounded-lg text-[10px] font-medium text-zinc-600 shadow-sm"
+              >
+                {d.name || "Dish"}
+              </div>
+            ))}
+          </div>
+          <button 
+            onClick={() => removeGuest(guest.id)}
+            className="w-5 h-5 bg-red-400 text-white rounded-full flex items-center justify-center shadow-sm opacity-30 group-hover:opacity-100 transition-all hover:bg-red-500 flex-shrink-0"
+            title="Remove guest"
+          >
+            <X size={14} strokeWidth={3} />
+          </button>
+        </>
+      ) : (
+        <div className="flex-1 flex items-center justify-between gap-3 px-4 py-2 bg-zinc-50 rounded-xl min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg flex-shrink-0 border border-black/5 bg-purple-50 flex items-center justify-center text-purple-500">
+              <Users size={12} />
+            </div>
+            <span className="text-zinc-700 font-medium whitespace-nowrap flex-shrink-0">{guest.name || "Unnamed Guest"}</span>
+          </div>
+          <div className="flex flex-wrap gap-1 justify-end">
+            {potluck.dishes.filter(d => d.ownerIds.includes(guest.id)).map(d => (
+              <div 
+                key={d.id} 
+                title={d.name || "Unnamed Dish"}
+                className="px-2 py-0.5 bg-white border border-black/5 rounded-lg text-[10px] font-medium text-zinc-600 shadow-sm"
+              >
+                {d.name || "Dish"}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Reorder.Item>
+  );
+};
+
 const PotluckDetail = ({ user }: { user: User | null }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -786,7 +888,6 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [activeDishForSearch, setActiveDishForSearch] = useState<Dish | null>(null);
-  const [generatingAvatarId, setGeneratingAvatarId] = useState<string | null>(null);
 
   const isOwner = user?.uid === potluck?.ownerId;
   const canEdit = true;
@@ -922,45 +1023,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     });
   };
 
-  const generateGuestAvatar = async (guestId: string, guestName: string) => {
-    if (!guestName || generatingAvatarId || !potluck) return;
-    
-    setGeneratingAvatarId(guestId);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-          parts: [
-            {
-              text: `A friendly, diverse, high-quality avatar portrait of a person named ${guestName} for a potluck app. Style: clean, modern, 3D render or professional illustration.`,
-            },
-          ],
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: "1:1",
-          },
-        },
-      });
-
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          const base64EncodeString = part.inlineData.data;
-          const imageUrl = `data:image/png;base64,${base64EncodeString}`;
-          
-          const updatedGuests = potluck.guests.map(g => g.id === guestId ? { ...g, imageUrl } : g);
-          const updatedPotluck = { ...potluck, guests: updatedGuests };
-          setPotluck(updatedPotluck);
-          handleSave(updatedPotluck, `Generated AI avatar for ${guestName}`);
-          return;
-        }
-      }
-    } catch (error) {
-      console.error("Failed to generate avatar:", error);
-    } finally {
-      setGeneratingAvatarId(null);
-    }
+  const reorderGuests = (newGuests: Guest[]) => {
+    if (!potluck) return;
+    const updated = { ...potluck, guests: newGuests };
+    setPotluck(updated);
+    handleSave(updated, "Reordered guests");
   };
 
   const addDish = () => {
@@ -1223,100 +1290,21 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
               )}
             </div>
             <div className="p-6 space-y-4">
-              <AnimatePresence initial={false}>
-                {potluck.guests.map((guest) => (
-                  <motion.div 
-                    key={guest.id}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="flex items-center gap-3 group"
-                  >
-                    {canEdit ? (
-                      <>
-                        <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
-                          <div className="w-10 h-10 rounded-xl flex-shrink-0 border border-black/5 bg-purple-50 flex items-center justify-center text-purple-500 overflow-hidden">
-                            {guest.imageUrl ? (
-                              <img src={guest.imageUrl} alt={guest.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                            ) : (
-                              <Users size={16} />
-                            )}
-                          </div>
-                          <div className="relative min-w-[120px]">
-                            <span className="invisible whitespace-pre px-4 py-2 block min-h-[42px]">{guest.name || "Guest name"}</span>
-                            <input 
-                              type="text" 
-                              value={guest.name}
-                              placeholder="Guest name"
-                              onChange={(e) => updateGuest(guest.id, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleSave();
-                                  e.currentTarget.blur();
-                                }
-                              }}
-                              onBlur={() => handleSave()}
-                              className="absolute inset-0 w-full px-4 py-2 bg-zinc-200 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all"
-                            />
-                          </div>
-                          {guest.name && (
-                            <button 
-                              onClick={() => generateGuestAvatar(guest.id, guest.name)}
-                              disabled={generatingAvatarId === guest.id}
-                              className={`p-1.5 rounded-lg transition-all flex-shrink-0 ${generatingAvatarId === guest.id ? 'bg-zinc-100 text-zinc-400 animate-pulse' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
-                              title="Generate AI Avatar"
-                            >
-                              <Sparkles size={14} />
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex-1 flex flex-wrap gap-1 justify-end">
-                          {potluck.dishes.filter(d => d.ownerIds.includes(guest.id)).map(d => (
-                            <div 
-                              key={d.id} 
-                              title={d.name || "Unnamed Dish"}
-                              className="px-2 py-0.5 bg-white border border-black/5 rounded-lg text-[10px] font-medium text-zinc-600 shadow-sm"
-                            >
-                              {d.name || "Dish"}
-                            </div>
-                          ))}
-                        </div>
-                        <button 
-                          onClick={() => removeGuest(guest.id)}
-                          className="w-5 h-5 bg-red-400 text-white rounded-full flex items-center justify-center shadow-sm opacity-30 group-hover:opacity-100 transition-all hover:bg-red-500 flex-shrink-0"
-                          title="Remove guest"
-                        >
-                          <X size={14} strokeWidth={3} />
-                        </button>
-                      </>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-between gap-3 px-4 py-2 bg-zinc-50 rounded-xl min-w-0">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-lg flex-shrink-0 border border-black/5 bg-purple-50 flex items-center justify-center text-purple-500 overflow-hidden">
-                            {guest.imageUrl ? (
-                              <img src={guest.imageUrl} alt={guest.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                            ) : (
-                              <Users size={12} />
-                            )}
-                          </div>
-                          <span className="text-zinc-700 font-medium whitespace-nowrap flex-shrink-0">{guest.name || "Unnamed Guest"}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 justify-end">
-                          {potluck.dishes.filter(d => d.ownerIds.includes(guest.id)).map(d => (
-                            <div 
-                              key={d.id} 
-                              title={d.name || "Unnamed Dish"}
-                              className="px-2 py-0.5 bg-white border border-black/5 rounded-lg text-[10px] font-medium text-zinc-600 shadow-sm"
-                            >
-                              {d.name || "Dish"}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+              <Reorder.Group axis="y" values={potluck.guests} onReorder={reorderGuests} className="space-y-4">
+                <AnimatePresence initial={false}>
+                  {potluck.guests.map((guest) => (
+                    <GuestItem 
+                      key={guest.id}
+                      guest={guest}
+                      potluck={potluck}
+                      canEdit={canEdit}
+                      updateGuest={updateGuest}
+                      removeGuest={removeGuest}
+                      handleSave={handleSave}
+                    />
+                  ))}
+                </AnimatePresence>
+              </Reorder.Group>
               {potluck.guests.length === 0 && (
                 <p className="text-center text-zinc-400 py-4 text-sm italic">No guests added yet.</p>
               )}
