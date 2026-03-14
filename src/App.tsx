@@ -724,11 +724,11 @@ const DishItem: React.FC<DishItemProps> = ({
               <div className="font-semibold text-zinc-900 text-sm">{dish.name || "Unnamed Dish"}</div>
             )}
           </div>
-          <div className="w-20 md:w-24 relative group/tooltip">
+          <div className="w-10 md:w-12 relative group/tooltip">
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
-              Number of people this dish serves
+              Total quantity or count
             </div>
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Serves</span>
+            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block mb-1 leading-tight">Total Count</span>
             {canEdit ? (
               <input 
                 type="number" 
@@ -741,11 +741,11 @@ const DishItem: React.FC<DishItemProps> = ({
                   }
                 }}
                 onBlur={() => handleSave()}
-                title="Number of people this dish serves"
-                className="w-full px-3 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:border-green-500 focus:outline-none transition-all font-medium text-zinc-900 text-sm"
+                title="Total quantity or count"
+                className="w-full px-2 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:border-green-500 focus:outline-none transition-all font-medium text-zinc-900 text-sm text-center"
               />
             ) : (
-              <div className="font-medium text-zinc-700 text-sm">{dish.count} people</div>
+              <div className="font-medium text-zinc-700 text-sm text-center">{dish.count}</div>
             )}
           </div>
         </div>
