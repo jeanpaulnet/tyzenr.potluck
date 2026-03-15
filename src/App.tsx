@@ -50,9 +50,31 @@ import {
   Globe,
   StickyNote,
   Lock,
-  Unlock
+  Unlock,
+  Package
 } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  defaultDropAnimationSideEffects,
+  DropAnimation,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { APP_VERSION, BUILD_DATE } from './version';
 
 // --- Types ---
@@ -153,6 +175,7 @@ interface Potluck {
   createdAt: Timestamp;
   guests: Guest[];
   dishes: Dish[];
+  otherItems?: Dish[];
   version?: number;
 }
 
@@ -311,8 +334,8 @@ const Navbar = ({ user }: { user: User | null }) => {
   };
 
   return (
-    <nav className="flex flex-col bg-zinc-100 border-b border-black/5 sticky top-0 z-50">
-      <div className="flex items-center justify-between px-6 py-4">
+    <nav className="bg-zinc-100 border-b border-black/5 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <Link to="/" className="text-xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
           <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white">
             <Utensils size={18} />
@@ -352,11 +375,13 @@ const Navbar = ({ user }: { user: User | null }) => {
       </div>
       
       {loginError && (
-        <div className="bg-red-50 border-t border-red-100 px-6 py-2 flex items-center justify-between animate-in slide-in-from-top duration-300">
-          <p className="text-xs text-red-600 font-medium">{loginError}</p>
-          <button onClick={() => setLoginError(null)} className="text-red-400 hover:text-red-600">
-            <X size={14} />
-          </button>
+        <div className="bg-red-50 border-t border-red-100 animate-in slide-in-from-top duration-300">
+          <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between">
+            <p className="text-xs text-red-600 font-medium">{loginError}</p>
+            <button onClick={() => setLoginError(null)} className="text-red-400 hover:text-red-600">
+              <X size={14} />
+            </button>
+          </div>
         </div>
       )}
     </nav>
@@ -590,7 +615,7 @@ const HomePage = ({ user }: { user: User | null }) => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       {homeError && (
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
@@ -785,12 +810,13 @@ interface DishItemProps {
   canEdit: boolean;
   isOwner: boolean;
   potluck: Potluck;
-  updateDish: (id: string, updates: Partial<Dish>) => void;
-  toggleOwner: (dishId: string, guestId: string) => void;
-  openImageSearch: (dish: Dish) => void;
+  updateDish: (id: string, updates: Partial<Dish>, type?: 'dish' | 'other') => void;
+  toggleOwner: (dishId: string, guestId: string, type?: 'dish' | 'other') => void;
+  openImageSearch: (dish: Dish, type?: 'dish' | 'other') => void;
   setDeleteConfirmId: (id: string | null) => void;
   handleSave: (updatedPotluck?: any, action?: string) => Promise<void>;
-  toggleDishLock: (id: string) => void;
+  toggleDishLock: (id: string, type?: 'dish' | 'other') => void;
+  type?: 'dish' | 'other';
 }
 
 const DishItem: React.FC<DishItemProps> = ({ 
@@ -803,24 +829,43 @@ const DishItem: React.FC<DishItemProps> = ({
   openImageSearch, 
   setDeleteConfirmId, 
   handleSave,
-  toggleDishLock
+  toggleDishLock,
+  type = 'dish'
 }) => {
-  const controls = useDragControls();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: dish.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 100 : 1,
+  };
+
   const canEditThisDish = isOwner || (canEdit && !dish.locked);
+  const isOwned = dish.ownerIds.length > 0;
+  const bgColor = dish.locked 
+    ? 'border-zinc-300 shadow-inner bg-zinc-200' 
+    : isOwned 
+      ? (type === 'dish' ? 'bg-white border-zinc-200 shadow-sm' : 'bg-purple-50 border-purple-200')
+      : 'bg-[#f5f5f5] border-black/10';
 
   return (
-    <Reorder.Item 
-      value={dish}
-      dragControls={controls}
-      dragListener={false}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className={`border rounded-2xl p-6 pl-10 relative group transition-all ${dish.locked ? 'border-zinc-300 shadow-inner bg-zinc-200' : 'bg-[#f5f5f5] border-black/10'}`}
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={`border rounded-2xl p-6 pl-10 relative group transition-all ${bgColor}`}
     >
       {canEdit && (
         <div 
-          onPointerDown={(e) => controls.start(e)}
+          {...attributes}
+          {...listeners}
           className="absolute top-1/2 -translate-y-1/2 left-3 p-2 text-zinc-400 cursor-grab active:cursor-grabbing hover:text-zinc-600 transition-colors z-20"
         >
           <div className="grid grid-cols-2 gap-1">
@@ -836,7 +881,7 @@ const DishItem: React.FC<DishItemProps> = ({
           <button 
             onClick={() => setDeleteConfirmId(dish.id)}
             className="p-1 bg-red-400 text-white rounded-full flex items-center justify-center shadow-sm opacity-30 group-hover:opacity-100 transition-all hover:bg-red-500"
-            title="Delete dish"
+            title="Delete item"
           >
             <X size={12} strokeWidth={3} />
           </button>
@@ -844,16 +889,16 @@ const DishItem: React.FC<DishItemProps> = ({
       )}
       
       {!isOwner && dish.locked && (
-        <div className="absolute bottom-2 right-2 text-amber-500 z-30" title="This dish is locked by the creator">
+        <div className="absolute bottom-2 right-2 text-amber-500 z-30" title="This item is locked by the creator">
           <Lock size={12} />
         </div>
       )}
       
       {isOwner && (
         <button 
-          onClick={() => toggleDishLock(dish.id)}
+          onClick={() => toggleDishLock(dish.id, type)}
           className={`absolute bottom-2 right-2 p-1 rounded-md transition-all shadow-sm z-30 ${dish.locked ? 'bg-amber-500 text-white' : 'bg-white text-zinc-400 hover:text-amber-500 border border-black/5'}`}
-          title={dish.locked ? "Unlock dish" : "Lock dish"}
+          title={dish.locked ? "Unlock item" : "Lock item"}
         >
           {dish.locked ? <Lock size={10} /> : <Unlock size={10} />}
         </button>
@@ -864,7 +909,7 @@ const DishItem: React.FC<DishItemProps> = ({
           <div 
             className="w-[48px] h-[48px] rounded-xl flex-shrink-0 shadow-sm border border-black/5 overflow-hidden cursor-pointer group/img relative"
             style={{ backgroundColor: !dish.imageUrl ? (dish.color || '#E5E7EB') : 'transparent' }}
-            onClick={() => canEditThisDish && openImageSearch(dish)}
+            onClick={() => canEditThisDish && openImageSearch(dish, type)}
             title={canEditThisDish ? "Click to set image" : ""}
           >
             {dish.imageUrl ? (
@@ -893,8 +938,8 @@ const DishItem: React.FC<DishItemProps> = ({
                 <input 
                   type="text" 
                   value={dish.name}
-                  placeholder="Dish Name"
-                  onChange={(e) => updateDish(dish.id, { name: e.target.value })}
+                  placeholder={type === 'dish' ? "Dish Name" : "Item Name"}
+                  onChange={(e) => updateDish(dish.id, { name: e.target.value }, type)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       handleSave();
@@ -902,13 +947,13 @@ const DishItem: React.FC<DishItemProps> = ({
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className="w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:border-green-500 focus:outline-none transition-all font-semibold text-zinc-900 text-sm"
+                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:outline-none transition-all font-semibold text-zinc-900 text-sm ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-purple-500'}`}
                 />
                 <input 
                   type="text" 
                   value={dish.description || ""}
                   placeholder="Description"
-                  onChange={(e) => updateDish(dish.id, { description: e.target.value })}
+                  onChange={(e) => updateDish(dish.id, { description: e.target.value }, type)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       handleSave();
@@ -916,12 +961,12 @@ const DishItem: React.FC<DishItemProps> = ({
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className="w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-yellow-50 border border-transparent rounded-xl focus:border-green-500 focus:outline-none transition-all text-zinc-900 text-xs"
+                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-yellow-50 border border-transparent rounded-xl focus:outline-none transition-all text-zinc-900 text-xs ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-purple-500'}`}
                 />
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full min-w-0">
-                <div className="font-semibold text-zinc-900 text-sm truncate sm:flex-1 min-w-0">{dish.name || "Unnamed Dish"}</div>
+                <div className="font-semibold text-zinc-900 text-sm truncate sm:flex-1 min-w-0">{dish.name || (type === 'dish' ? "Unnamed Dish" : "Unnamed Item")}</div>
                 {dish.description && (
                   <div className="px-3 py-1 bg-yellow-50 rounded-lg text-zinc-900 text-xs leading-tight sm:flex-1 min-w-0 break-words">{dish.description}</div>
                 )}
@@ -937,7 +982,7 @@ const DishItem: React.FC<DishItemProps> = ({
               <input 
                 type="number" 
                 value={dish.count}
-                onChange={(e) => updateDish(dish.id, { count: parseInt(e.target.value) || 0 })}
+                onChange={(e) => updateDish(dish.id, { count: parseInt(e.target.value) || 0 }, type)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     handleSave();
@@ -946,7 +991,7 @@ const DishItem: React.FC<DishItemProps> = ({
                 }}
                 onBlur={() => handleSave()}
                 title="Total quantity or count"
-                className="w-full px-2 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:border-green-500 focus:outline-none transition-all font-medium text-zinc-900 text-sm text-center"
+                className={`w-full px-2 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:outline-none transition-all font-medium text-zinc-900 text-sm text-center ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-purple-500'}`}
               />
             ) : (
               <div className="font-medium text-zinc-700 text-sm text-center">{dish.count}</div>
@@ -959,15 +1004,16 @@ const DishItem: React.FC<DishItemProps> = ({
     <div className="flex flex-wrap gap-2 pt-2 border-t border-black/5 relative pr-10">
         {potluck.guests.map((guest) => {
           const canToggle = isOwner || !dish.locked;
+          const isSelected = dish.ownerIds.includes(guest.id);
           
           return (
             <button
               key={guest.id}
               disabled={!canToggle}
-              onClick={() => toggleOwner(dish.id, guest.id)}
+              onClick={() => toggleOwner(dish.id, guest.id, type)}
               className={`px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
-                dish.ownerIds.includes(guest.id)
-                  ? 'bg-green-500 text-white shadow-sm'
+                isSelected
+                  ? (type === 'dish' ? 'bg-green-500 text-white shadow-sm' : 'bg-purple-500 text-white shadow-sm')
                   : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
               } ${!canToggle ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
@@ -976,7 +1022,7 @@ const DishItem: React.FC<DishItemProps> = ({
           );
         })}
       </div>
-    </Reorder.Item>
+    </div>
   );
 };
 
@@ -1004,7 +1050,7 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className={`flex items-center gap-3 group relative pl-10 pr-12 py-2 rounded-2xl transition-all`}
+      className={`flex items-center gap-3 group relative pl-10 pr-12 py-2 rounded-2xl transition-all bg-blue-50/50 hover:bg-blue-50 border border-transparent hover:border-blue-100`}
     >
       {canEdit && (
         <div 
@@ -1049,13 +1095,13 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
         </div>
       </div>
       <div className="flex-1 flex flex-wrap gap-1 justify-end">
-        {potluck.dishes.filter(d => d.ownerIds.includes(guest.id)).map(d => (
+        {[...(potluck.dishes || []), ...(potluck.otherItems || [])].filter(d => d.ownerIds.includes(guest.id)).map(d => (
           <div 
             key={d.id} 
-            title={d.name || "Unnamed Dish"}
+            title={d.name || "Unnamed Item"}
             className="px-2 py-0.5 bg-white border border-black/5 rounded-lg text-[10px] font-medium text-zinc-600 shadow-sm"
           >
-            {d.name || "Dish"}
+            {d.name || "Item"}
           </div>
         ))}
       </div>
@@ -1087,13 +1133,105 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
   const [urlEditId, setUrlEditId] = useState<string | null>(null);
   const [tempUrl, setTempUrl] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [deleteType, setDeleteType] = useState<'dish' | 'guest' | null>(null);
+  const [deleteType, setDeleteType] = useState<'dish' | 'guest' | 'other' | null>(null);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [isBackupFetching, setIsBackupFetching] = useState(false);
   const [activeDishForSearch, setActiveDishForSearch] = useState<Dish | null>(null);
+  const [activeSearchType, setActiveSearchType] = useState<'dish' | 'other'>('dish');
   const [saveError, setSaveError] = useState<string | null>(null);
   const potluckRef = React.useRef(potluck);
   const lastSavedRef = React.useRef<string>("");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || !potluck) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    if (activeId === overId) return;
+
+    const dishes = potluck.dishes;
+    const otherItems = potluck.otherItems || [];
+
+    const activeInDishes = dishes.find(d => d.id === activeId);
+    const activeInOther = otherItems.find(d => d.id === activeId);
+    
+    const overInDishes = dishes.find(d => d.id === overId);
+    const overInOther = otherItems.find(d => d.id === overId);
+
+    let newDishes = [...dishes];
+    let newOtherItems = [...otherItems];
+
+    if (activeInDishes && overInDishes) {
+      const oldIndex = dishes.findIndex(d => d.id === activeId);
+      const newIndex = dishes.findIndex(d => d.id === overId);
+      newDishes = arrayMove(dishes, oldIndex, newIndex);
+    } else if (activeInOther && overInOther) {
+      const oldIndex = otherItems.findIndex(d => d.id === activeId);
+      const newIndex = otherItems.findIndex(d => d.id === overId);
+      newOtherItems = arrayMove(otherItems, oldIndex, newIndex);
+    } else if (activeInDishes && overInOther) {
+      // Move from dishes to other items
+      const item = activeInDishes;
+      newDishes = dishes.filter(d => d.id !== activeId);
+      const overIndex = otherItems.findIndex(d => d.id === overId);
+      newOtherItems.splice(overIndex, 0, item);
+    } else if (activeInOther && overInDishes) {
+      // Move from other items to dishes
+      const item = activeInOther;
+      newOtherItems = otherItems.filter(d => d.id !== activeId);
+      const overIndex = dishes.findIndex(d => d.id === overId);
+      newDishes.splice(overIndex, 0, item);
+    }
+
+    const updated = { ...potluck, dishes: newDishes, otherItems: newOtherItems };
+    setPotluck(updated);
+    potluckRef.current = updated;
+    handleSave(updated, "Reordered items");
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over || !potluck) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    const dishes = potluck.dishes;
+    const otherItems = potluck.otherItems || [];
+
+    const activeInDishes = dishes.find(d => d.id === activeId);
+    const activeInOther = otherItems.find(d => d.id === activeId);
+
+    // If dropping over a container (not an item)
+    if (overId === 'dishes-container' && activeInOther) {
+      const item = activeInOther;
+      const newOtherItems = otherItems.filter(d => d.id !== activeId);
+      const newDishes = [...dishes, item];
+      const updated = { ...potluck, dishes: newDishes, otherItems: newOtherItems };
+      setPotluck(updated);
+      potluckRef.current = updated;
+    } else if (overId === 'other-container' && activeInDishes) {
+      const item = activeInDishes;
+      const newDishes = dishes.filter(d => d.id !== activeId);
+      const newOtherItems = [...otherItems, item];
+      const updated = { ...potluck, dishes: newDishes, otherItems: newOtherItems };
+      setPotluck(updated);
+      potluckRef.current = updated;
+    }
+  };
 
   useEffect(() => {
     potluckRef.current = potluck;
@@ -1274,6 +1412,14 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     handleSave(updated, "Reordered dishes");
   };
 
+  const handleReorderOtherItems = (newItems: Dish[]) => {
+    if (!potluck) return;
+    const updated = { ...potluck, otherItems: newItems };
+    setPotluck(updated);
+    potluckRef.current = updated;
+    handleSave(updated, "Reordered other items");
+  };
+
   const handleDelete = async () => {
     if (!id || !window.confirm("Are you sure you want to delete this potluck?")) return;
     try {
@@ -1317,6 +1463,10 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       dishes: potluck.dishes.map(d => ({
         ...d,
         ownerIds: d.ownerIds.filter(pid => pid !== guestId)
+      })),
+      otherItems: (potluck.otherItems || []).map(d => ({
+        ...d,
+        ownerIds: d.ownerIds.filter(pid => pid !== guestId)
       }))
     };
     setPotluck(updated);
@@ -1353,28 +1503,48 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     handleSave(updated, "Added a new dish");
   };
 
-  const removeDish = (dishId: string) => {
+  const addOtherItem = () => {
     if (!potluck) return;
-    const dish = potluck.dishes.find(d => d.id === dishId);
-    const updated = { ...potluck, dishes: potluck.dishes.filter(d => d.id !== dishId) };
+    const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const newItem: Dish = { id: uuidv4(), name: "", description: "", count: 1, ownerIds: [], color: randomColor, locked: false };
+    const updated = { ...potluck, otherItems: [...(potluck.otherItems || []), newItem] };
     setPotluck(updated);
     potluckRef.current = updated;
-    handleSave(updated, `Removed dish: ${dish?.name || "Unnamed"}`);
+    handleSave(updated, "Added a new item");
   };
 
-  const updateDish = (dishId: string, updates: Partial<Dish>) => {
+  const removeDish = (dishId: string, type: 'dish' | 'other' = 'dish') => {
+    if (!potluck) return;
+    const list = type === 'dish' ? potluck.dishes : (potluck.otherItems || []);
+    const item = list.find(d => d.id === dishId);
+    
+    const updated = { 
+      ...potluck, 
+      dishes: type === 'dish' ? potluck.dishes.filter(d => d.id !== dishId) : potluck.dishes,
+      otherItems: type === 'other' ? (potluck.otherItems || []).filter(d => d.id !== dishId) : (potluck.otherItems || [])
+    };
+    
+    setPotluck(updated);
+    potluckRef.current = updated;
+    handleSave(updated, `Removed ${type}: ${item?.name || "Unnamed"}`);
+  };
+
+  const updateDish = (dishId: string, updates: Partial<Dish>, type: 'dish' | 'other' = 'dish') => {
     if (!potluck) return;
     const updated = {
       ...potluck,
-      dishes: potluck.dishes.map(d => d.id === dishId ? { ...d, ...updates } : d)
+      dishes: type === 'dish' ? potluck.dishes.map(d => d.id === dishId ? { ...d, ...updates } : d) : potluck.dishes,
+      otherItems: type === 'other' ? (potluck.otherItems || []).map(d => d.id === dishId ? { ...d, ...updates } : d) : (potluck.otherItems || [])
     };
     setPotluck(updated);
     potluckRef.current = updated;
   };
 
-  const toggleOwner = (dishId: string, guestId: string) => {
+  const toggleOwner = (dishId: string, guestId: string, type: 'dish' | 'other' = 'dish') => {
     if (!potluck || !canEdit) return;
-    const dish = potluck.dishes.find(d => d.id === dishId);
+    const list = type === 'dish' ? potluck.dishes : (potluck.otherItems || []);
+    const dish = list.find(d => d.id === dishId);
     if (!dish) return;
 
     const newOwners = dish.ownerIds.includes(guestId)
@@ -1383,24 +1553,27 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
 
     const updated = {
       ...potluck,
-      dishes: potluck.dishes.map(d => d.id === dishId ? { ...d, ownerIds: newOwners } : d)
+      dishes: type === 'dish' ? potluck.dishes.map(d => d.id === dishId ? { ...d, ownerIds: newOwners } : d) : potluck.dishes,
+      otherItems: type === 'other' ? (potluck.otherItems || []).map(d => d.id === dishId ? { ...d, ownerIds: newOwners } : d) : (potluck.otherItems || [])
     };
     setPotluck(updated);
     potluckRef.current = updated;
-    handleSave(updated, "Toggled dish owner");
+    handleSave(updated, `Toggled ${type} owner`);
   };
 
-  const toggleDishLock = (dishId: string) => {
+  const toggleDishLock = (dishId: string, type: 'dish' | 'other' = 'dish') => {
     if (!potluck || !isOwner) return;
-    const dish = potluck.dishes.find(d => d.id === dishId);
+    const list = type === 'dish' ? potluck.dishes : (potluck.otherItems || []);
+    const dish = list.find(d => d.id === dishId);
     if (!dish) return;
     const updated = {
       ...potluck,
-      dishes: potluck.dishes.map(d => d.id === dishId ? { ...d, locked: !d.locked } : d)
+      dishes: type === 'dish' ? potluck.dishes.map(d => d.id === dishId ? { ...d, locked: !d.locked } : d) : potluck.dishes,
+      otherItems: type === 'other' ? (potluck.otherItems || []).map(d => d.id === dishId ? { ...d, locked: !d.locked } : d) : (potluck.otherItems || [])
     };
     setPotluck(updated);
     potluckRef.current = updated;
-    handleSave(updated, `${dish.locked ? 'Unlocked' : 'Locked'} dish: ${dish.name || "Unnamed"}`);
+    handleSave(updated, `${dish.locked ? 'Unlocked' : 'Locked'} ${type}: ${dish.name || "Unnamed"}`);
   };
 
   const handleUrlSubmit = (e: React.FormEvent | string) => {
@@ -1420,16 +1593,18 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     if (activeDishForSearch && potluck) {
       const updated = {
         ...potluck,
-        dishes: potluck.dishes.map(d => d.id === activeDishForSearch.id ? { ...d, imageUrl: url } : d)
+        dishes: activeSearchType === 'dish' ? potluck.dishes.map(d => d.id === activeDishForSearch.id ? { ...d, imageUrl: url } : d) : potluck.dishes,
+        otherItems: activeSearchType === 'other' ? (potluck.otherItems || []).map(d => d.id === activeDishForSearch.id ? { ...d, imageUrl: url } : d) : (potluck.otherItems || [])
       };
       setPotluck(updated);
       setImageSearchOpen(false);
-      handleSave(updated, `Updated image for dish: ${activeDishForSearch.name || "Unnamed"}`);
+      handleSave(updated, `Updated image for ${activeSearchType}: ${activeDishForSearch.name || "Unnamed"}`);
       setActiveDishForSearch(null);
     } else if (urlEditId && potluck) {
       const updated = {
         ...potluck,
-        dishes: potluck.dishes.map(d => d.id === urlEditId ? { ...d, imageUrl: url } : d)
+        dishes: potluck.dishes.map(d => d.id === urlEditId ? { ...d, imageUrl: url } : d),
+        otherItems: (potluck.otherItems || []).map(d => d.id === urlEditId ? { ...d, imageUrl: url } : d)
       };
       setPotluck(updated);
       setUrlEditId(null);
@@ -1438,11 +1613,14 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     }
   };
 
-  const openImageSearch = (dish: Dish) => {
+  const openImageSearch = (dish: Dish, type: 'dish' | 'other' = 'dish') => {
     if (!canEdit) return;
     setActiveDishForSearch(dish);
+    setActiveSearchType(type);
     setImageSearchOpen(true);
   };
+
+  const totalServes = potluck?.dishes.reduce((sum, dish) => sum + (dish.count || 0), 0) || 0;
 
   if (loading) return (
     <div className="flex justify-center py-40">
@@ -1451,14 +1629,14 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
   );
 
   if (!potluck) return (
-    <div className="max-w-2xl mx-auto px-6 py-24 text-center">
+    <div className="max-w-4xl mx-auto px-6 py-24 text-center">
       <h2 className="text-2xl font-bold text-zinc-900 mb-4">Potluck not found</h2>
       <Link to="/" className="text-emerald-600 font-medium hover:underline">Back to home</Link>
     </div>
   );
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-12">
+    <div className="max-w-5xl mx-auto px-6 py-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
         <div className="flex-1">
           <Link to="/" className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-900 mb-4 transition-colors">
@@ -1518,27 +1696,37 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                 {potluck.description && <p className="text-zinc-500 text-sm break-words">{potluck.description}</p>}
               </div>
             )}
-            <div className="flex flex-col items-center justify-center px-1 py-1.5 bg-blue-50 border border-blue-100 rounded-xl w-[60%] min-w-[40px] relative group/tooltip">
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
-                Number of people this potluck serves
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col items-center justify-center px-1 py-1.5 bg-blue-50 border border-blue-100 rounded-xl w-20 relative group/tooltip">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
+                  Number of people invited
+                </div>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">People</span>
+                {canEdit ? (
+                  <input 
+                    type="number"
+                    value={potluck.totalPeople || 0}
+                    onChange={(e) => {
+                      const updated = { ...potluck, totalPeople: parseInt(e.target.value) || 0 };
+                      setPotluck(updated);
+                      potluckRef.current = updated;
+                    }}
+                    onBlur={() => handleSave()}
+                    title="Number of people invited"
+                    className="text-xl font-black text-blue-700 bg-transparent w-full text-center focus:outline-none"
+                  />
+                ) : (
+                  <span className="text-xl font-black text-blue-700">{potluck.totalPeople || 0}</span>
+                )}
               </div>
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">People</span>
-              {canEdit ? (
-                <input 
-                  type="number"
-                  value={potluck.totalPeople || 0}
-                  onChange={(e) => {
-                    const updated = { ...potluck, totalPeople: parseInt(e.target.value) || 0 };
-                    setPotluck(updated);
-                    potluckRef.current = updated;
-                  }}
-                  onBlur={() => handleSave()}
-                  title="Number of people this potluck serves"
-                  className="text-xl font-black text-blue-700 bg-transparent w-full text-center focus:outline-none"
-                />
-              ) : (
-                <span className="text-xl font-black text-blue-700">{potluck.totalPeople || 0}</span>
-              )}
+
+              <div className="flex flex-col items-center justify-center px-1 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl w-20 relative group/tooltip">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
+                  Total serves from all dishes
+                </div>
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Serves</span>
+                <span className="text-xl font-black text-zinc-700">{totalServes}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1574,69 +1762,138 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
         </div>
       </div>
 
-      <div className="flex flex-col gap-8">
-        {/* Dishes Section */}
-        <div className="w-full">
-          <div className="bg-zinc-200 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
-            <div className="px-6 py-5 border-b border-black/5 bg-zinc-300 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold text-zinc-900">
-                <Utensils size={20} className="text-green-500" />
-                Dishes ({potluck.dishes.length})
-              </div>
-              {canEdit && (
-                <button 
-                  onClick={addDish}
-                  className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all"
-                >
-                  <Plus size={16} />
-                </button>
-              )}
-            </div>
-            <div className="p-6">
-              <Reorder.Group 
-                axis="y" 
-                values={potluck.dishes} 
-                onReorder={handleReorderDishes}
-                className="space-y-8"
-              >
-                <AnimatePresence initial={false}>
-                  {potluck.dishes.map((dish) => (
-                    <DishItem 
-                      key={dish.id}
-                      dish={dish}
-                      canEdit={canEdit}
-                      isOwner={isOwner}
-                      potluck={potluck}
-                      updateDish={updateDish}
-                      toggleOwner={toggleOwner}
-                      openImageSearch={openImageSearch}
-                      setDeleteConfirmId={(id) => {
-                        setDeleteConfirmId(id);
-                        setDeleteType(id ? 'dish' : null);
-                      }}
-                      handleSave={handleSave}
-                      toggleDishLock={toggleDishLock}
-                    />
-                  ))}
-                </AnimatePresence>
-              </Reorder.Group>
-              {potluck.dishes.length === 0 && (
-                  <div className="text-center py-12 bg-zinc-200 rounded-2xl border-2 border-dashed border-zinc-300">
-                  <p className="text-zinc-400 text-sm">No dishes added yet.</p>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+      >
+        <div className="flex flex-col gap-8">
+          {/* Dishes Section */}
+          <div className="w-full" id="dishes-container">
+            <div className="bg-zinc-200 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+              <div className="px-6 py-5 border-b border-black/5 bg-zinc-300 flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-zinc-900">
+                  <Utensils size={20} className="text-green-500" />
+                  Dishes ({potluck.dishes.length})
                 </div>
-              )}
-              {canEdit && (
-                <button 
-                  onClick={addDish}
-                  className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-green-500 hover:border-green-500 hover:bg-green-50/50 transition-all flex items-center justify-center gap-2 font-medium"
+                {canEdit && (
+                  <button 
+                    onClick={addDish}
+                    className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all"
+                  >
+                    <Plus size={16} />
+                  </button>
+                )}
+              </div>
+              <div className="p-6">
+                <SortableContext 
+                  items={potluck.dishes.map(d => d.id)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <Plus size={20} />
-                  Add Another Dish
-                </button>
-              )}
+                  <div className="space-y-8 min-h-[50px]">
+                    {potluck.dishes.map((dish) => (
+                      <DishItem 
+                        key={dish.id}
+                        dish={dish}
+                        canEdit={canEdit}
+                        isOwner={isOwner}
+                        potluck={potluck}
+                        updateDish={updateDish}
+                        toggleOwner={toggleOwner}
+                        openImageSearch={openImageSearch}
+                        setDeleteConfirmId={(id) => {
+                          setDeleteConfirmId(id);
+                          setDeleteType(id ? 'dish' : null);
+                        }}
+                        handleSave={handleSave}
+                        toggleDishLock={toggleDishLock}
+                        type="dish"
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+                {potluck.dishes.length === 0 && (
+                    <div className="text-center py-12 bg-zinc-200 rounded-2xl border-2 border-dashed border-zinc-300">
+                    <p className="text-zinc-400 text-sm">No dishes added yet.</p>
+                  </div>
+                )}
+                {canEdit && (
+                  <button 
+                    onClick={addDish}
+                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-green-500 hover:border-green-500 hover:bg-green-50/50 transition-all flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Plus size={20} />
+                    Add Another Dish
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Other Items Section */}
+          <div className="w-full" id="other-container">
+            <div className="bg-zinc-100 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+              <div className="px-6 py-5 border-b border-black/5 bg-zinc-200 flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-zinc-900">
+                  <Package size={20} className="text-purple-500" />
+                  Other Items ({(potluck.otherItems || []).length})
+                </div>
+                {canEdit && (
+                  <button 
+                    onClick={addOtherItem}
+                    className="p-1.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all"
+                  >
+                    <Plus size={16} />
+                  </button>
+                )}
+              </div>
+              <div className="p-6">
+                <SortableContext 
+                  items={(potluck.otherItems || []).map(d => d.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-8 min-h-[50px]">
+                    {(potluck.otherItems || []).map((item) => (
+                      <DishItem 
+                        key={item.id}
+                        dish={item}
+                        canEdit={canEdit}
+                        isOwner={isOwner}
+                        potluck={potluck}
+                        updateDish={updateDish}
+                        toggleOwner={toggleOwner}
+                        openImageSearch={openImageSearch}
+                        setDeleteConfirmId={(id) => {
+                          setDeleteConfirmId(id);
+                          setDeleteType(id ? 'other' : null);
+                        }}
+                        handleSave={handleSave}
+                        toggleDishLock={toggleDishLock}
+                        type="other"
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+                {(potluck.otherItems || []).length === 0 && (
+                    <div className="text-center py-12 bg-zinc-100 rounded-2xl border-2 border-dashed border-zinc-200">
+                    <p className="text-zinc-400 text-sm">No other items added yet.</p>
+                  </div>
+                )}
+                {canEdit && (
+                  <button 
+                    onClick={addOtherItem}
+                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-purple-500 hover:border-purple-500 hover:bg-purple-50/50 transition-all flex items-center justify-center gap-2 font-medium"
+                  >
+                    <Plus size={20} />
+                    Add Another Item
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
+      </DndContext>
 
         {/* Notes Section */}
         <div className="w-full">
@@ -1656,10 +1913,10 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                     potluckRef.current = updated;
                   }}
                   onBlur={() => handleSave()}
-                  className="w-full min-h-[120px] p-4 bg-white border border-zinc-200 rounded-2xl focus:border-amber-500 focus:outline-none transition-all text-zinc-900 text-sm resize-none"
+                  className="w-full min-h-[60px] p-4 bg-white border border-zinc-200 rounded-2xl focus:border-amber-500 focus:outline-none transition-all text-zinc-900 text-sm resize-none"
                 />
               ) : (
-                <div className="min-h-[60px] p-4 bg-white border border-zinc-100 rounded-2xl text-zinc-600 text-sm whitespace-pre-wrap italic">
+                <div className="min-h-[32px] p-4 bg-white border border-zinc-100 rounded-2xl text-zinc-600 text-sm whitespace-pre-wrap italic">
                   {potluck.notes || "No notes added."}
                 </div>
               )}
@@ -1720,9 +1977,8 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
             </div>
           </div>
         </div>
-      </div>
 
-      <AnimatePresence>
+        <AnimatePresence>
         {urlEditId && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <motion.div 
@@ -1757,7 +2013,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                   <button 
                     type="button"
                     onClick={() => {
-                      updateDish(urlEditId, { imageUrl: "" });
+                      updateDish(urlEditId!, { imageUrl: "" }, activeSearchType);
                       setUrlEditId(null);
                       handleSave();
                     }}
@@ -1798,7 +2054,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
               <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Trash2 size={32} />
               </div>
-              <h3 className="text-xl font-bold text-zinc-900 mb-2">Delete this {deleteType}?</h3>
+              <h3 className="text-xl font-bold text-zinc-900 mb-2">Delete this {deleteType === 'dish' ? 'dish' : deleteType === 'other' ? 'item' : 'guest'}?</h3>
               <p className="text-zinc-500 mb-8">This action cannot be undone. Are you sure you want to remove this from the potluck?</p>
               <div className="flex gap-3">
                 <button 
@@ -1814,7 +2070,9 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                   onClick={() => {
                     if (deleteConfirmId) {
                       if (deleteType === 'dish') {
-                        removeDish(deleteConfirmId);
+                        removeDish(deleteConfirmId, 'dish');
+                      } else if (deleteType === 'other') {
+                        removeDish(deleteConfirmId, 'other');
                       } else if (deleteType === 'guest') {
                         removeGuest(deleteConfirmId);
                       }

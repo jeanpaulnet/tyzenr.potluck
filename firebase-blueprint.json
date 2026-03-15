@@ -46,6 +46,10 @@
         "dishes": {
           "type": "array",
           "items": { "$ref": "Dish" }
+        },
+        "otherItems": {
+          "type": "array",
+          "items": { "$ref": "Dish" }
         }
       },
       "required": ["id", "title", "ownerId", "createdAt"]
