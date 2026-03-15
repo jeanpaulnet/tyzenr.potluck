@@ -17,6 +17,7 @@ fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2));
 
 // Also update a version file for the frontend
 const versionTsPath = path.resolve(process.cwd(), 'src/version.ts');
-fs.writeFileSync(versionTsPath, `export const APP_VERSION = "${newVersion}";\n`);
+const buildDate = new Date().toISOString().split('T')[0];
+fs.writeFileSync(versionTsPath, `export const APP_VERSION = "${newVersion}";\nexport const BUILD_DATE = "${buildDate}";\n`);
 
-console.log(`Version incremented to ${newVersion}`);
+console.log(`Version incremented to ${newVersion} (${buildDate})`);

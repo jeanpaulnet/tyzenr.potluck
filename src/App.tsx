@@ -43,7 +43,6 @@ import {
   Check,
   Image as ImageIcon,
   X,
-  History,
   Search,
   ExternalLink,
   Download,
@@ -53,7 +52,7 @@ import {
   Unlock
 } from 'lucide-react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'motion/react';
-import { APP_VERSION } from './version';
+import { APP_VERSION, BUILD_DATE } from './version';
 
 // --- Types ---
 
@@ -153,134 +152,8 @@ interface Potluck {
   createdAt: Timestamp;
   guests: Guest[];
   dishes: Dish[];
+  version?: number;
 }
-
-interface HistoryEntry {
-  id: string;
-  userId: string;
-  userName: string;
-  action: string;
-  timestamp: Timestamp;
-  snapshot?: Partial<Potluck>;
-}
-
-// --- History Modal ---
-
-interface HistoryModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  potluckId: string;
-  onRestore: (snapshot: Partial<Potluck>) => void;
-  canEdit: boolean;
-}
-
-const HistoryModal = ({ isOpen, onClose, potluckId, onRestore, canEdit }: HistoryModalProps) => {
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!isOpen || !potluckId) return;
-    
-    setLoading(true);
-    const q = query(
-      collection(db, 'potlucks', potluckId, 'history'),
-      orderBy('timestamp', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const entries = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          userId: "anonymous",
-          userName: "Guest User",
-          action: "Unknown action",
-          ...data
-        } as HistoryEntry;
-      });
-      setHistory(entries);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching history", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [isOpen, potluckId]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
-      >
-        <div className="px-6 py-4 border-b border-black/5 flex items-center justify-between bg-zinc-50">
-          <h3 className="font-bold text-zinc-900 flex items-center gap-2">
-            <History size={18} className="text-emerald-500" />
-            Potluck History
-          </h3>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-        
-        <div className="p-6 overflow-y-auto flex-1">
-          {loading ? (
-            <div className="flex justify-center py-10">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
-            </div>
-          ) : history.length === 0 ? (
-            <div className="text-center py-10 text-zinc-400">
-              No history recorded yet.
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {history.map((entry) => (
-                <div key={entry.id} className="flex gap-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 font-bold text-xs">
-                    {entry.userName?.charAt(0) || entry.userId.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-zinc-900 text-sm">{entry.userName || "Unknown User"}</span>
-                          <span className="text-[10px] text-zinc-400">
-                            {entry.timestamp && typeof entry.timestamp.toDate === 'function' ? entry.timestamp.toDate().toLocaleString() : "Just now"}
-                          </span>
-                        </div>
-                        <p className="text-zinc-600 text-sm leading-relaxed">{entry.action}</p>
-                      </div>
-                      {canEdit && entry.snapshot && (
-                        <button 
-                          onClick={() => {
-                            if (window.confirm("Restore this version? Current changes will be saved to history.")) {
-                              onRestore(entry.snapshot!);
-                              onClose();
-                            }
-                          }}
-                          className="flex-shrink-0 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors flex items-center gap-1"
-                          title="Restore this version"
-                        >
-                          <Save size={12} />
-                          Restore
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </motion.div>
-    </div>
-  );
-};
 
 // --- Image Search Modal ---
 
@@ -385,20 +258,23 @@ const ImageSearchModal = ({ isOpen, onClose, dishName, currentUrl, onSelect }: I
 // --- Helpers ---
 
 const saveToExternalApi = async (user: User | null, potluckId: string, potluckData: Potluck) => {
-  console.log(`Calling external backup API for potluck ${potluckId}...`);
+  const payload = {
+    userId: user ? user.uid : "",
+    Id: potluckId,
+    Content: JSON.stringify(potluckData)
+  };
+  
+  console.log(`[API REQ] POST /api/common`, payload);
+  
   try {
-    const response = await fetch('/api/external-save', {
+    const response = await fetch('/api/common', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: user ? user.uid : "",
-        Id: potluckId,
-        Content: JSON.stringify(potluckData)
-      })
+      body: JSON.stringify(payload)
     });
-    console.log(`External backup API response status: ${response.status}`);
+    console.log(`[API RES] POST /api/common - Status: ${response.status}`);
   } catch (err) {
-    console.error("External backup API proxy error:", err);
+    console.error("[API ERR] POST /api/common:", err);
   }
 };
 
@@ -440,7 +316,11 @@ const Navbar = ({ user }: { user: User | null }) => {
           <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white">
             <Utensils size={18} />
           </div>
-          Potluck Place <span className="text-xs font-normal text-zinc-400 ml-1">v{APP_VERSION}</span>
+          Potluck Place 
+          <div className="flex flex-col ml-1">
+            <span className="text-[10px] font-normal text-zinc-400 leading-none">v{APP_VERSION}</span>
+            <span className="text-[8px] font-normal text-zinc-300 leading-none">{BUILD_DATE}</span>
+          </div>
         </Link>
         <div className="flex items-center gap-4">
           {user ? (
@@ -485,8 +365,10 @@ const Navbar = ({ user }: { user: User | null }) => {
 const HomePage = ({ user }: { user: User | null }) => {
   const [potlucks, setPotlucks] = useState<Potluck[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isBackupLoading, setIsBackupLoading] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [homeError, setHomeError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -495,6 +377,55 @@ const HomePage = ({ user }: { user: User | null }) => {
       setLoading(false);
       return;
     }
+
+    const fetchExternal = async () => {
+      try {
+        setIsBackupLoading(true);
+        const url = `/api/common/list/${user.uid}`;
+        console.log(`[API REQ] GET ${url}`);
+        
+        const response = await fetch(url);
+        console.log(`[API RES] GET ${url} - Status: ${response.status}`);
+        
+        if (response.ok) {
+          const externalData = await response.json();
+          console.log(`[API RES DATA]`, externalData);
+          if (Array.isArray(externalData)) {
+            const parsedList = externalData.map((item: any) => {
+              try {
+                const content = JSON.parse(item.Content);
+                return {
+                  ...content,
+                  id: item.Id || content.id,
+                  // Ensure createdAt is a Timestamp if it's just an object from JSON
+                  createdAt: content.createdAt?.seconds 
+                    ? new Timestamp(content.createdAt.seconds, content.createdAt.nanoseconds)
+                    : Timestamp.now()
+                } as Potluck;
+              } catch (e) {
+                console.error("Error parsing external potluck content", e);
+                return null;
+              }
+            }).filter(p => p !== null) as Potluck[];
+            
+            if (parsedList.length > 0) {
+              setPotlucks(prev => {
+                // Merge external with existing (Firestore usually wins if it's already loaded)
+                const existingIds = new Set(prev.map(p => p.id));
+                const newItems = parsedList.filter(p => !existingIds.has(p.id));
+                return [...prev, ...newItems].sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch external potlucks:", err);
+      } finally {
+        setIsBackupLoading(false);
+      }
+    };
+
+    fetchExternal();
 
     const q = query(
       collection(db, 'potlucks'), 
@@ -525,10 +456,9 @@ const HomePage = ({ user }: { user: User | null }) => {
   }, [user]);
 
   const createNewPotluck = async () => {
-    if (!user) {
-      alert("Please sign in to create a potluck.");
-      return;
-    }
+    if (!user) return;
+    
+    setIsCreating(true);
     const id = uuidv4();
     const newPotluck: Potluck = {
       id,
@@ -538,15 +468,19 @@ const HomePage = ({ user }: { user: User | null }) => {
       ownerId: user.uid,
       createdAt: Timestamp.now(),
       guests: [],
-      dishes: []
+      dishes: [],
+      version: 1
     };
 
     try {
-      await saveToExternalApi(user, id, newPotluck);
+      // Don't await external API to avoid blocking navigation
+      saveToExternalApi(user, id, newPotluck);
+      
       await setDoc(doc(db, 'potlucks', id), newPotluck);
       navigate(`/potluck/${id}`);
     } catch (error: any) {
       console.error("Create error:", error);
+      setIsCreating(false);
       if (error.message?.includes('quota') || error.message?.includes('resource-exhausted')) {
         setHomeError("Your daily database limit has been reached. Cannot create new potluck.");
       } else {
@@ -584,13 +518,13 @@ const HomePage = ({ user }: { user: User | null }) => {
         batch.update(docRef, { dishes: updatedDishes });
       }
       await batch.commit();
-      alert("All dish images have been removed from your potlucks.");
+      setHomeError("All dish images have been removed from your potlucks.");
     } catch (error: any) {
       console.error("Error clearing images:", error);
       if (error.message?.includes('quota') || error.message?.includes('resource-exhausted')) {
         setHomeError("Your daily database limit has been reached. Cannot clear images.");
       } else {
-        alert("Failed to clear images. Check console for details.");
+        setHomeError("Failed to clear images. Check console for details.");
       }
     } finally {
       setLoading(false);
@@ -655,6 +589,9 @@ const HomePage = ({ user }: { user: User | null }) => {
             Your Potlucks
           </h1>
           <p className="text-zinc-500">Coordinate meals and guests with ease.</p>
+          {isBackupLoading && (
+            <p className="text-[10px] text-emerald-500 font-medium animate-pulse mt-1">Syncing with backup API...</p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {user && (
@@ -672,10 +609,15 @@ const HomePage = ({ user }: { user: User | null }) => {
           {user && potlucks.length > 0 && (
             <button 
               onClick={createNewPotluck}
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-2xl font-semibold hover:bg-emerald-600 transition-all shadow-md hover:shadow-lg active:scale-95"
+              disabled={isCreating}
+              className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-2xl font-semibold hover:bg-emerald-600 transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Plus size={20} />
-              Create New
+              {isCreating ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Plus size={20} />
+              )}
+              {isCreating ? 'Creating...' : 'Create New'}
             </button>
           )}
         </div>
@@ -723,9 +665,14 @@ const HomePage = ({ user }: { user: User | null }) => {
                 </div>
               </div>
               <div className="mt-6 pt-6 border-t border-black/5 flex items-center justify-between">
-                <span className="text-xs text-zinc-400">
-                  {p.createdAt.toDate().toLocaleDateString()}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-xs text-zinc-400">
+                    {p.createdAt.toDate().toLocaleDateString()}
+                  </span>
+                  {p.version && (
+                    <span className="text-[10px] text-zinc-300 font-mono">v{p.version}</span>
+                  )}
+                </div>
                 {user?.uid === p.ownerId && (
                   <span className="text-xs font-medium px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg">Owner</span>
                 )}
@@ -744,10 +691,15 @@ const HomePage = ({ user }: { user: User | null }) => {
               <p className="text-zinc-500 mb-6">Create your first potluck to get started!</p>
               <button 
                 onClick={createNewPotluck}
-                className="inline-flex items-center gap-2 px-6 py-2 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 transition-all"
+                disabled={isCreating}
+                className="inline-flex items-center gap-2 px-6 py-2 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus size={18} />
-                Create Potluck
+                {isCreating ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Plus size={18} />
+                )}
+                {isCreating ? 'Creating...' : 'Create Potluck'}
               </button>
             </>
           ) : (
@@ -1128,7 +1080,6 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
   const [copied, setCopied] = useState(false);
   const [urlEditId, setUrlEditId] = useState<string | null>(null);
   const [tempUrl, setTempUrl] = useState("");
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteType, setDeleteType] = useState<'dish' | 'guest' | null>(null);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
@@ -1154,30 +1105,6 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
   const canEdit = true;
 
 
-
-  const logHistory = async (action: string, customSnapshot?: Partial<Potluck>) => {
-    if (!id) return;
-    try {
-      const snapshotToSave = customSnapshot || (potluck ? {
-        title: potluck.title,
-        description: potluck.description,
-        totalPeople: potluck.totalPeople,
-        guests: potluck.guests,
-        dishes: potluck.dishes
-      } : null);
-
-      await addDoc(collection(db, 'potlucks', id, 'history'), {
-        userId: user?.uid || "anonymous",
-        userName: user?.displayName || user?.email || "Guest User",
-        action,
-        timestamp: serverTimestamp(),
-        ...(snapshotToSave ? { snapshot: snapshotToSave } : {})
-      });
-    } catch (error) {
-      console.error("Error logging history", error);
-    }
-  };
-
   useEffect(() => {
     if (!id) return;
     const unsubscribe = onSnapshot(doc(db, 'potlucks', id), (snapshot) => {
@@ -1194,6 +1121,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
         } as Potluck;
         
         setPotluck(fullPotluck);
+        potluckRef.current = fullPotluck;
         
         // Update lastSavedRef to match the server state
         const replacer = (key: string, value: any) => {
@@ -1262,11 +1190,16 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     console.log("Saving potluck and calling external API...");
     setIsSaving(true);
     try {
-      await saveToExternalApi(user, id, potluckToSave);
-      await setDoc(doc(db, 'potlucks', id), potluckToSave);
+      const potluckWithVersion = {
+        ...potluckToSave,
+        version: (potluckToSave.version || 0) + 1
+      };
       
-      lastSavedRef.current = currentStringified;
-      await logHistory(action || `Updated potluck: ${potluckToSave.title}`, potluckToSave);
+      await saveToExternalApi(user, id, potluckWithVersion);
+      await setDoc(doc(db, 'potlucks', id), potluckWithVersion);
+      
+      potluckRef.current = potluckWithVersion;
+      lastSavedRef.current = JSON.stringify(potluckWithVersion, replacer);
       setIsSaving(false);
       setSaveError(null);
     } catch (error: any) {
@@ -1289,43 +1222,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     }
   };
 
-  const handleRestore = async (snapshot: Partial<Potluck>) => {
-    if (!id || !potluck) return;
-    setIsSaving(true);
-    try {
-      const restoredPotluck = {
-        ...potluck,
-        ...snapshot,
-        id: potluck.id,
-        createdAt: potluck.createdAt
-      };
-
-      if (user) {
-        await saveToExternalApi(user, id, restoredPotluck);
-      }
-      await setDoc(doc(db, 'potlucks', id), restoredPotluck);
-
-      await logHistory(`Restored to version from history`, restoredPotluck);
-      setIsSaving(false);
-    } catch (error: any) {
-      console.error("Restore error:", error);
-      if (error.message?.includes('quota') || error.message?.includes('resource-exhausted')) {
-        setSaveError("Your daily database limit has been reached. Cannot restore version.");
-      } else {
-        if (user) {
-          handleFirestoreError(error, OperationType.UPDATE, `potlucks/${id}`);
-        } else {
-          setSaveError("Permission denied. Only the owner or signed-in users can restore history.");
-        }
-      }
-      setIsSaving(false);
-    }
-  };
-
   const handleReorderDishes = (newDishes: Dish[]) => {
     if (!potluck) return;
     const updated = { ...potluck, dishes: newDishes };
     setPotluck(updated);
+    potluckRef.current = updated;
     handleSave(updated, "Reordered dishes");
   };
 
@@ -1375,6 +1276,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       }))
     };
     setPotluck(updated);
+    potluckRef.current = updated;
     handleSave(updated, `Removed guest: ${guest?.name || "Unnamed"}`);
   };
 
@@ -1392,6 +1294,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     if (!potluck) return;
     const updated = { ...potluck, guests: newGuests };
     setPotluck(updated);
+    potluckRef.current = updated;
     handleSave(updated, "Reordered guests");
   };
 
@@ -1411,6 +1314,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     const dish = potluck.dishes.find(d => d.id === dishId);
     const updated = { ...potluck, dishes: potluck.dishes.filter(d => d.id !== dishId) };
     setPotluck(updated);
+    potluckRef.current = updated;
     handleSave(updated, `Removed dish: ${dish?.name || "Unnamed"}`);
   };
 
@@ -1477,7 +1381,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     }
 
     if (url.length > 200) {
-      alert("Image URL is too long (max 200 characters). Please use a shorter URL.");
+      setSaveError("Image URL is too long (max 200 characters). Please use a shorter URL.");
       return;
     }
 
@@ -1619,13 +1523,6 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
             title="Export Potluck"
           >
             <Download size={20} />
-          </button>
-          <button 
-            onClick={() => setHistoryOpen(true)}
-            className="p-3 bg-white border border-black/5 text-zinc-600 rounded-2xl hover:bg-zinc-50 transition-all shadow-sm"
-            title="View History"
-          >
-            <History size={20} />
           </button>
           {isOwner && (
             <button 
@@ -1814,14 +1711,6 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
           </div>
         )}
       </AnimatePresence>
-
-      <HistoryModal 
-        isOpen={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        potluckId={id || ""}
-        onRestore={handleRestore}
-        canEdit={canEdit}
-      />
 
       <ImageSearchModal 
         isOpen={imageSearchOpen}

@@ -58,10 +58,6 @@ service cloud.firestore {
       // Delete requires signin and must be the owner
       allow delete: if isAuthenticated() && isDocOwner();
 
-      match /history/{historyId} {
-        allow read: if true;
-        allow create: if true;
-      }
     }
   }
 }
