@@ -799,7 +799,7 @@ const DishItem: React.FC<DishItemProps> = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className={`bg-zinc-200 border rounded-2xl p-6 pl-10 relative group transition-all ${dish.locked ? 'border-amber-200 shadow-inner bg-amber-50/30' : 'border-black/10'}`}
+      className={`border rounded-2xl p-6 pl-10 relative group transition-all ${dish.locked ? 'border-zinc-300 shadow-inner bg-zinc-200' : 'bg-[#f5f5f5] border-black/10'}`}
     >
       {canEdit && (
         <div 
@@ -827,9 +827,19 @@ const DishItem: React.FC<DishItemProps> = ({
       )}
       
       {!isOwner && dish.locked && (
-        <div className="absolute top-2 right-2 text-amber-500" title="This dish is locked by the creator">
-          <Lock size={14} />
+        <div className="absolute bottom-2 right-2 text-amber-500 z-30" title="This dish is locked by the creator">
+          <Lock size={12} />
         </div>
+      )}
+      
+      {isOwner && (
+        <button 
+          onClick={() => toggleDishLock(dish.id)}
+          className={`absolute bottom-2 right-2 p-1 rounded-md transition-all shadow-sm z-30 ${dish.locked ? 'bg-amber-500 text-white' : 'bg-white text-zinc-400 hover:text-amber-500 border border-black/5'}`}
+          title={dish.locked ? "Unlock dish" : "Lock dish"}
+        >
+          {dish.locked ? <Lock size={10} /> : <Unlock size={10} />}
+        </button>
       )}
       
       <div className="flex flex-col gap-4">
@@ -859,10 +869,10 @@ const DishItem: React.FC<DishItemProps> = ({
               </div>
             )}
           </div>
-          <div className="flex-1 flex flex-row gap-4 w-full">
-          <div className="flex-1">
+          <div className="flex-1 flex flex-row gap-4 w-full min-w-0">
+          <div className="flex-1 min-w-0">
             {canEditThisDish ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full">
                 <input 
                   type="text" 
                   value={dish.name}
@@ -875,7 +885,7 @@ const DishItem: React.FC<DishItemProps> = ({
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className="flex-1 min-w-0 px-3 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:border-green-500 focus:outline-none transition-all font-semibold text-zinc-900 text-sm"
+                  className="w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:border-green-500 focus:outline-none transition-all font-semibold text-zinc-900 text-sm"
                 />
                 <input 
                   type="text" 
@@ -889,14 +899,14 @@ const DishItem: React.FC<DishItemProps> = ({
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className="flex-1 min-w-0 px-3 py-1.5 bg-yellow-50 border border-transparent rounded-xl focus:border-green-500 focus:outline-none transition-all text-zinc-600 text-[7px]"
+                  className="w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-yellow-50 border border-transparent rounded-xl focus:border-green-500 focus:outline-none transition-all text-zinc-900 text-xs"
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <div className="flex-1 font-semibold text-zinc-900 text-sm truncate">{dish.name || "Unnamed Dish"}</div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full min-w-0">
+                <div className="font-semibold text-zinc-900 text-sm truncate sm:flex-1 min-w-0">{dish.name || "Unnamed Dish"}</div>
                 {dish.description && (
-                  <div className="flex-1 px-3 py-1 bg-yellow-50 rounded-lg text-zinc-600 text-[7px] leading-tight truncate">{dish.description}</div>
+                  <div className="px-3 py-1 bg-yellow-50 rounded-lg text-zinc-900 text-xs leading-tight sm:flex-1 min-w-0 break-words">{dish.description}</div>
                 )}
               </div>
             )}
@@ -905,7 +915,7 @@ const DishItem: React.FC<DishItemProps> = ({
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
               Total quantity or count
             </div>
-            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block mb-1 leading-tight">Total Count</span>
+            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block mb-1 leading-tight">Serves</span>
             {canEditThisDish ? (
               <input 
                 type="number" 
@@ -931,8 +941,7 @@ const DishItem: React.FC<DishItemProps> = ({
 
     <div className="flex flex-wrap gap-2 pt-2 border-t border-black/5 relative pr-10">
         {potluck.guests.map((guest) => {
-          const isGuestLocked = guest.locked;
-          const canToggle = isOwner || (!dish.locked && !isGuestLocked);
+          const canToggle = isOwner || !dish.locked;
           
           return (
             <button
@@ -946,20 +955,9 @@ const DishItem: React.FC<DishItemProps> = ({
               } ${!canToggle ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               {guest.name || "Guest"}
-              {isGuestLocked && <Lock size={8} />}
             </button>
           );
         })}
-        
-        {isOwner && (
-          <button 
-            onClick={() => toggleDishLock(dish.id)}
-            className={`absolute bottom-0 right-0 p-1.5 rounded-lg transition-all shadow-sm ${dish.locked ? 'bg-amber-500 text-white' : 'bg-white text-zinc-400 hover:text-amber-500 border border-black/5'}`}
-            title={dish.locked ? "Unlock dish" : "Lock dish"}
-          >
-            {dish.locked ? <Lock size={12} /> : <Unlock size={12} />}
-          </button>
-        )}
       </div>
     </Reorder.Item>
   );
@@ -980,7 +978,7 @@ interface GuestItemProps {
 
 const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest, setDeleteConfirmId, handleSave, toggleGuestLock }: GuestItemProps) => {
   const controls = useDragControls();
-  const canEditThisGuest = isOwner || (canEdit && !guest.locked);
+  const canEditThisGuest = canEdit;
 
   return (
     <Reorder.Item 
@@ -990,8 +988,24 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className={`flex items-center gap-3 group relative pl-10 pr-12 py-2 rounded-2xl transition-all ${guest.locked ? 'bg-amber-50/30 border border-amber-100' : ''}`}
+      className={`flex items-center gap-3 group relative pl-10 pr-12 py-2 rounded-2xl transition-all`}
     >
+      {!isOwner && guest.locked && (
+        <div className="absolute bottom-2 right-2 text-amber-500 z-30" title="This guest is locked by the creator">
+          <Lock size={12} />
+        </div>
+      )}
+
+      {isOwner && (
+        <button 
+          onClick={() => toggleGuestLock(guest.id)}
+          className={`absolute bottom-2 right-2 p-1 rounded-md transition-all shadow-sm z-30 ${guest.locked ? 'bg-amber-500 text-white' : 'bg-white text-zinc-400 hover:text-amber-500 border border-black/5'}`}
+          title={guest.locked ? "Unlock guest" : "Lock guest"}
+        >
+          {guest.locked ? <Lock size={10} /> : <Unlock size={10} />}
+        </button>
+      )}
+
       {canEdit && (
         <div 
           onPointerDown={(e) => controls.start(e)}
@@ -1030,7 +1044,7 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
               />
             </>
           ) : (
-            <div className="px-4 py-2 font-semibold text-zinc-900">{guest.name || "Guest"}</div>
+            <div className="px-4 py-2 font-semibold text-zinc-900 truncate">{guest.name || "Guest"}</div>
           )}
         </div>
       </div>
@@ -1047,21 +1061,8 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
       </div>
       
       <div className="flex items-center gap-1 flex-shrink-0">
-        {!isOwner && guest.locked && (
-          <div className="absolute bottom-2 right-2 text-amber-500" title="This guest is locked by the creator">
-            <Lock size={14} />
-          </div>
-        )}
-
         {isOwner && (
           <div className="absolute bottom-2 right-2 flex items-center gap-1">
-            <button 
-              onClick={() => toggleGuestLock(guest.id)}
-              className={`p-1.5 rounded-lg transition-all shadow-sm ${guest.locked ? 'bg-amber-500 text-white' : 'bg-white text-zinc-400 hover:text-amber-500 border border-black/5'}`}
-              title={guest.locked ? "Unlock guest" : "Lock guest"}
-            >
-              {guest.locked ? <Lock size={12} /> : <Unlock size={12} />}
-            </button>
             <button 
               onClick={() => setDeleteConfirmId(guest.id)}
               className="w-5 h-5 bg-red-400 text-white rounded-full flex items-center justify-center shadow-sm opacity-30 group-hover:opacity-100 transition-all hover:bg-red-500 flex-shrink-0"
@@ -1092,9 +1093,19 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
   const [activeDishForSearch, setActiveDishForSearch] = useState<Dish | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const potluckRef = React.useRef(potluck);
+  const lastSavedRef = React.useRef<string>("");
 
   useEffect(() => {
     potluckRef.current = potluck;
+    if (potluck && !lastSavedRef.current) {
+      const replacer = (key: string, value: any) => {
+        if (value && typeof value === 'object' && 'seconds' in value && 'nanoseconds' in value) {
+          return `${value.seconds}.${value.nanoseconds}`;
+        }
+        return value;
+      };
+      lastSavedRef.current = JSON.stringify(potluck, replacer);
+    }
   }, [potluck]);
 
   const isOwner = user?.uid === potluck?.ownerId;
@@ -1168,6 +1179,21 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     const potluckToSave = isPotluck ? updatedPotluck : potluckRef.current;
     
     if (!potluckToSave || !id || !potluckToSave.title?.trim()) return;
+
+    // Avoid unnecessary saves if nothing changed
+    // Use a replacer to handle Timestamp objects consistently
+    const replacer = (key: string, value: any) => {
+      if (value && typeof value === 'object' && 'seconds' in value && 'nanoseconds' in value) {
+        return `${value.seconds}.${value.nanoseconds}`;
+      }
+      return value;
+    };
+    
+    const currentStringified = JSON.stringify(potluckToSave, replacer);
+    if (currentStringified === lastSavedRef.current) {
+      return;
+    }
+
     setIsSaving(true);
     try {
       if (user) {
@@ -1175,6 +1201,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       }
       await setDoc(doc(db, 'potlucks', id), potluckToSave);
       
+      lastSavedRef.current = currentStringified;
       await logHistory(action || `Updated potluck: ${potluckToSave.title}`, potluckToSave);
       setIsSaving(false);
       setSaveError(null);
@@ -1187,7 +1214,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
         setSaveError("Your daily database limit has been reached. Changes cannot be saved until tomorrow.");
       } else if (error.code === 'permission-denied') {
         setSaveError("Permission denied. You may not have permission to edit this potluck.");
-        handleFirestoreError(error, OperationType.UPDATE, `potlucks/${id}`);
+        // Only trigger the ErrorBoundary for signed-in users who should have permission
+        // Guests should just see the saveError message in the UI
+        if (user) {
+          handleFirestoreError(error, OperationType.UPDATE, `potlucks/${id}`);
+        }
       } else {
         setSaveError(`An error occurred: ${error.message || "Please try again later."}`);
       }
@@ -1240,7 +1271,13 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     }
   };
 
-  const copyUrl = () => {
+  const copyUrl = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Blur any active element to avoid triggering onBlur saves that might fail
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -1413,9 +1450,9 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
             <ArrowLeft size={16} />
             Back to Potlucks
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full min-w-0 overflow-hidden">
             {canEdit ? (
-              <div className="flex-1 space-y-2">
+              <div className="flex-1 space-y-2 w-full min-w-0">
                 {!user && (
                   <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">
                     <Globe size={12} />
@@ -1433,30 +1470,30 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className="text-4xl font-bold tracking-tight text-zinc-900 bg-transparent border-b-2 border-transparent hover:border-zinc-200 focus:border-emerald-500 focus:outline-none transition-all w-full"
+                  className="text-2xl sm:text-4xl font-bold tracking-tight text-zinc-900 bg-transparent border-b-2 border-transparent hover:border-zinc-200 focus:border-emerald-500 focus:outline-none transition-all w-full min-w-0"
                 />
                 <textarea 
                   value={potluck.description || ""}
                   placeholder="Add a description..."
                   onChange={(e) => setPotluck({ ...potluck, description: e.target.value })}
                   onBlur={() => handleSave()}
-                  className="w-full bg-transparent text-zinc-500 text-sm resize-none focus:outline-none border-b border-transparent hover:border-zinc-200 focus:border-emerald-500 transition-all py-1"
-                  rows={1}
+                  className="w-full bg-transparent text-zinc-500 text-sm resize-none focus:outline-none border-b border-transparent hover:border-zinc-200 focus:border-emerald-500 transition-all py-1 min-w-0 break-words"
+                  rows={2}
                 />
               </div>
             ) : (
-              <div className="flex-1 space-y-1">
-                <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
+              <div className="flex-1 space-y-1 w-full min-w-0">
+                <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-zinc-900 break-words">
                   {potluck.title}
                 </h1>
-                {potluck.description && <p className="text-zinc-500 text-sm">{potluck.description}</p>}
+                {potluck.description && <p className="text-zinc-500 text-sm break-words">{potluck.description}</p>}
               </div>
             )}
             <div className="flex flex-col items-center justify-center px-1 py-1.5 bg-blue-50 border border-blue-100 rounded-xl min-w-[40px] relative group/tooltip">
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
                 Number of people this potluck serves
               </div>
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Serves People</span>
+              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">People</span>
               {canEdit ? (
                 <input 
                   type="number"
@@ -1514,8 +1551,8 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       <div className="flex flex-col gap-8">
         {/* Dishes Section */}
         <div className="w-full">
-          <div className="bg-zinc-100 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
-            <div className="px-6 py-5 border-b border-black/5 bg-zinc-200 flex items-center justify-between">
+          <div className="bg-zinc-200 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-black/5 bg-zinc-300 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-zinc-900">
                 <Utensils size={20} className="text-green-500" />
                 Dishes ({potluck.dishes.length})
@@ -1558,7 +1595,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                 </AnimatePresence>
               </Reorder.Group>
               {potluck.dishes.length === 0 && (
-                  <div className="text-center py-12 bg-zinc-100 rounded-2xl border-2 border-dashed border-zinc-300">
+                  <div className="text-center py-12 bg-zinc-200 rounded-2xl border-2 border-dashed border-zinc-300">
                   <p className="text-zinc-400 text-sm">No dishes added yet.</p>
                 </div>
               )}

@@ -35,14 +35,10 @@ service cloud.firestore {
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
              data.ownerId is string &&
              data.createdAt is timestamp &&
-             (!('dishes' in data) || (data.dishes is list && data.dishes.all(dish, isValidDish(dish))));
-    }
-
-    function isValidDish(dish) {
-      return dish.id is string &&
-             dish.name is string &&
-             (!('description' in dish) || (dish.description is string && dish.description.size() <= 500)) &&
-             (!('imageUrl' in dish) || (dish.imageUrl is string && dish.imageUrl.size() <= 200));
+             (!('totalPeople' in data) || data.totalPeople is number) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+             (!('guests' in data) || data.guests is list) &&
+             (!('dishes' in data) || data.dishes is list);
     }
 
     match /potlucks/{potluckId} {
@@ -54,17 +50,17 @@ service cloud.firestore {
                       isValidPotluck(request.resource.data) &&
                       request.resource.data.ownerId == request.auth.uid;
 
-      // Update does not require signin
-      allow update: if isValidPotluck(request.resource.data) && 
-                      request.resource.data.ownerId == resource.data.ownerId &&
-                      request.resource.data.createdAt == resource.data.createdAt;
+      // Update does not require signin for public potlucks
+      // We are more permissive on updates to avoid guest friction
+      allow update: if (request.resource.data.ownerId == resource.data.ownerId) &&
+                      (request.resource.data.createdAt == resource.data.createdAt);
 
       // Delete requires signin and must be the owner
       allow delete: if isAuthenticated() && isDocOwner();
 
       match /history/{historyId} {
         allow read: if true;
-        allow create: if request.resource.data.timestamp == request.time;
+        allow create: if true;
       }
     }
   }
