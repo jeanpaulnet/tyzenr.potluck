@@ -393,6 +393,10 @@ const HomePage = ({ user }: { user: User | null }) => {
           if (Array.isArray(externalData)) {
             const parsedList = externalData.map((item: any) => {
               try {
+                if (!item.Content) {
+                  console.warn("External item missing Content property", item);
+                  return null;
+                }
                 const content = JSON.parse(item.Content);
                 return {
                   ...content,
@@ -403,7 +407,7 @@ const HomePage = ({ user }: { user: User | null }) => {
                     : Timestamp.now()
                 } as Potluck;
               } catch (e) {
-                console.error("Error parsing external potluck content", e);
+                console.error("Error parsing external potluck content", e, item.Content);
                 return null;
               }
             }).filter(p => p !== null) as Potluck[];
@@ -553,6 +557,9 @@ const HomePage = ({ user }: { user: User | null }) => {
           guests: Array.isArray(data.guests) ? data.guests : [],
           dishes: Array.isArray(data.dishes) ? data.dishes : []
         };
+
+        // Save to external API as well
+        saveToExternalApi(user, id, importedPotluck);
 
         await setDoc(doc(db, 'potlucks', id), importedPotluck);
         navigate(`/potluck/${id}`);
