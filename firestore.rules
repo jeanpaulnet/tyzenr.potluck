@@ -34,7 +34,14 @@ service cloud.firestore {
       return data.id is string &&
              data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
              data.ownerId is string &&
-             data.createdAt is timestamp;
+             data.createdAt is timestamp &&
+             (!('dishes' in data) || (data.dishes is list && data.dishes.all(dish, isValidDish(dish))));
+    }
+
+    function isValidDish(dish) {
+      return dish.id is string &&
+             dish.name is string &&
+             (!('imageUrl' in dish) || (dish.imageUrl is string && dish.imageUrl.size() <= 200));
     }
 
     match /potlucks/{potluckId} {

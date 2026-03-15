@@ -338,6 +338,7 @@ const ImageSearchModal = ({ isOpen, onClose, dishName, currentUrl, onSelect }: I
                 placeholder="https://example.com/image.jpg"
                 className="w-full px-4 py-3 bg-zinc-50 border border-black/5 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none transition-all"
                 autoFocus
+                maxLength={200}
               />
               <button 
                 type="submit"
@@ -410,6 +411,10 @@ const Navbar = ({ user }: { user: User | null }) => {
       <div className="flex items-center gap-4">
         {user ? (
           <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end mr-1">
+              <span className="text-xs font-semibold text-zinc-900">{user.displayName}</span>
+              <span className="text-[10px] text-zinc-400 font-mono select-all" title="User ID (UID)">{user.uid}</span>
+            </div>
             <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-8 h-8 rounded-full border border-black/5" referrerPolicy="no-referrer" />
             <button 
               onClick={handleLogout}
@@ -481,8 +486,8 @@ const HomePage = ({ user }: { user: User | null }) => {
     };
 
     try {
-      await setDoc(doc(db, 'potlucks', id), newPotluck);
       await saveToExternalApi(user, id, newPotluck);
+      await setDoc(doc(db, 'potlucks', id), newPotluck);
       navigate(`/potluck/${id}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `potlucks/${id}`);
@@ -976,12 +981,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     if (!potluckToSave || !id || !potluckToSave.title?.trim()) return;
     setIsSaving(true);
     try {
+      if (user) {
+        await saveToExternalApi(user, id, potluckToSave);
+      }
       await setDoc(doc(db, 'potlucks', id), potluckToSave);
       
-      if (user) {
-        saveToExternalApi(user, id, potluckToSave);
-      }
-
       await logHistory(action || `Updated potluck: ${potluckToSave.title}`, potluckToSave);
       setIsSaving(false);
       setSaveError(null);
@@ -1002,7 +1006,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
   };
 
   const handleRestore = async (snapshot: Partial<Potluck>) => {
-    if (!id || !potluck) return;
+    if (!id || !potluck || !user) return;
     setIsSaving(true);
     try {
       const restoredPotluck = {
@@ -1011,11 +1015,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
         id: potluck.id,
         createdAt: potluck.createdAt
       };
-      await setDoc(doc(db, 'potlucks', id), restoredPotluck);
 
       if (user) {
-        saveToExternalApi(user, id, restoredPotluck);
+        await saveToExternalApi(user, id, restoredPotluck);
       }
+      await setDoc(doc(db, 'potlucks', id), restoredPotluck);
 
       await logHistory(`Restored to version from history`, restoredPotluck);
       setIsSaving(false);
@@ -1136,6 +1140,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     } else {
       e.preventDefault();
       url = tempUrl;
+    }
+
+    if (url.length > 200) {
+      alert("Image URL is too long (max 200 characters). Please use a shorter URL.");
+      return;
     }
 
     if (activeDishForSearch && potluck) {
@@ -1417,6 +1426,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                     onChange={(e) => setTempUrl(e.target.value)}
                     placeholder="https://example.com/image.jpg"
                     className="w-full px-4 py-2 bg-zinc-50 border border-transparent rounded-xl focus:bg-white focus:border-green-500 focus:outline-none transition-all"
+                    maxLength={200}
                   />
                 </div>
                 <div className="flex gap-3">
@@ -1449,7 +1459,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
         onClose={() => setHistoryOpen(false)}
         potluckId={id || ""}
         onRestore={handleRestore}
-        canEdit={isOwner}
+        canEdit={!!user}
       />
 
       <ImageSearchModal 
