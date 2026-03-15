@@ -397,11 +397,23 @@ const saveToExternalApi = async (user: User | null, potluckId: string, potluckDa
 // --- Components ---
 
 const Navbar = ({ user }: { user: User | null }) => {
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   const handleLogin = async () => {
+    setLoginError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed", error);
+      if (error.code === 'auth/popup-blocked') {
+        setLoginError("The login popup was blocked by your browser. Please allow popups for this site.");
+      } else if (error.code === 'auth/network-request-failed') {
+        setLoginError("Network error. If you are in incognito mode, please ensure third-party cookies are enabled or try a normal window.");
+      } else if (error.code === 'auth/cancelled-by-user') {
+        // Just ignore if user closed the popup
+      } else {
+        setLoginError(`Login failed: ${error.message || "Please try again."}`);
+      }
     }
   };
 
@@ -414,39 +426,50 @@ const Navbar = ({ user }: { user: User | null }) => {
   };
 
   return (
-    <nav className="flex items-center justify-between px-6 py-4 bg-zinc-100 border-b border-black/5 sticky top-0 z-50">
-      <Link to="/" className="text-xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-        <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white">
-          <Utensils size={18} />
-        </div>
-        Potluck Place <span className="text-xs font-normal text-zinc-400 ml-1">v{APP_VERSION}</span>
-      </Link>
-      <div className="flex items-center gap-4">
-        {user ? (
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-end mr-1">
-              <span className="text-xs font-semibold text-zinc-900">{user.displayName}</span>
-              <span className="text-[10px] text-zinc-400 font-mono select-all" title="User ID (UID)">{user.uid}</span>
-            </div>
-            <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-8 h-8 rounded-full border border-black/5" referrerPolicy="no-referrer" />
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
-            >
-              <LogOut size={16} />
-              Sign Out
-            </button>
+    <nav className="flex flex-col bg-zinc-100 border-b border-black/5 sticky top-0 z-50">
+      <div className="flex items-center justify-between px-6 py-4">
+        <Link to="/" className="text-xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
+          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white">
+            <Utensils size={18} />
           </div>
-        ) : (
-          <button 
-            onClick={handleLogin}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 transition-all shadow-sm"
-          >
-            <LogIn size={16} />
-            Sign In with Google
-          </button>
-        )}
+          Potluck Place <span className="text-xs font-normal text-zinc-400 ml-1">v{APP_VERSION}</span>
+        </Link>
+        <div className="flex items-center gap-4">
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-end mr-1">
+                <span className="text-xs font-semibold text-zinc-900">{user.displayName}</span>
+                <span className="text-[10px] text-zinc-400 font-mono select-all" title="User ID (UID)">{user.uid}</span>
+              </div>
+              <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-8 h-8 rounded-full border border-black/5" referrerPolicy="no-referrer" />
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
+              >
+                <LogOut size={16} />
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={handleLogin}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 transition-all shadow-sm"
+            >
+              <LogIn size={16} />
+              Sign In with Google
+            </button>
+          )}
+        </div>
       </div>
+      
+      {loginError && (
+        <div className="bg-red-50 border-t border-red-100 px-6 py-2 flex items-center justify-between animate-in slide-in-from-top duration-300">
+          <p className="text-xs text-red-600 font-medium">{loginError}</p>
+          <button onClick={() => setLoginError(null)} className="text-red-400 hover:text-red-600">
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </nav>
   );
 };
@@ -1248,7 +1271,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       if (error.message?.includes('quota') || error.message?.includes('resource-exhausted')) {
         setSaveError("Your daily database limit has been reached. Cannot restore version.");
       } else {
-        handleFirestoreError(error, OperationType.UPDATE, `potlucks/${id}`);
+        if (user) {
+          handleFirestoreError(error, OperationType.UPDATE, `potlucks/${id}`);
+        } else {
+          setSaveError("Permission denied. Only the owner or signed-in users can restore history.");
+        }
       }
       setIsSaving(false);
     }
@@ -1267,7 +1294,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       await deleteDoc(doc(db, 'potlucks', id));
       navigate('/');
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `potlucks/${id}`);
+      if (user) {
+        handleFirestoreError(error, OperationType.DELETE, `potlucks/${id}`);
+      } else {
+        setSaveError("Permission denied. Only the owner can delete this potluck.");
+      }
     }
   };
 

@@ -50,7 +50,7 @@ async function startServer() {
     app.use(vite.middlewares);
     
     // SPA fallback for dev
-    app.use("*", async (req, res, next) => {
+    app.get("*", async (req, res, next) => {
       const url = req.originalUrl;
       // Skip API routes
       if (url.startsWith('/api')) return next();
