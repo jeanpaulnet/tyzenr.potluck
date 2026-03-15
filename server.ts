@@ -11,26 +11,26 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
-  // Proxy for external potluck save API
-  app.post("/api/external-save/:userId", async (req, res) => {
-    const { userId } = req.params;
-    const { Id, Content } = req.body;
+  // Proxy for external backup save API
+  app.post("/api/external-save", async (req, res) => {
+    const { userId, Id, Content } = req.body;
+    const targetUserId = userId || "";
     
-    console.log(`Forwarding save for potluck ${Id} and user ${userId} to external API`);
+    console.log(`Forwarding backup save for potluck ${Id} and user "${targetUserId}" to external API`);
     
     try {
-      const response = await fetch(`https://webapi.tyzenr.com/potluck/save/${userId}`, {
+      const response = await fetch(`https://webapi.tyzenr.com/common/${targetUserId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ Id, Content })
       });
       
       const status = response.status;
-      console.log(`External API responded with status: ${status}`);
+      console.log(`External backup API responded with status: ${status}`);
       res.status(status).json({ success: response.ok });
     } catch (error) {
-      console.error("External API error:", error);
-      res.status(500).json({ error: "Failed to call external API" });
+      console.error("External backup API error:", error);
+      res.status(500).json({ error: "Failed to call external backup API" });
     }
   });
 

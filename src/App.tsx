@@ -188,10 +188,16 @@ const HistoryModal = ({ isOpen, onClose, potluckId, onRestore, canEdit }: Histor
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const entries = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as HistoryEntry));
+      const entries = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          userId: "anonymous",
+          userName: "Guest User",
+          action: "Unknown action",
+          ...data
+        } as HistoryEntry;
+      });
       setHistory(entries);
       setLoading(false);
     }, (error) => {
@@ -244,7 +250,7 @@ const HistoryModal = ({ isOpen, onClose, potluckId, onRestore, canEdit }: Histor
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-bold text-zinc-900 text-sm">{entry.userName || "Unknown User"}</span>
                           <span className="text-[10px] text-zinc-400">
-                            {entry.timestamp?.toDate().toLocaleString() || "Just now"}
+                            {entry.timestamp && typeof entry.timestamp.toDate === 'function' ? entry.timestamp.toDate().toLocaleString() : "Just now"}
                           </span>
                         </div>
                         <p className="text-zinc-600 text-sm leading-relaxed">{entry.action}</p>
@@ -379,18 +385,20 @@ const ImageSearchModal = ({ isOpen, onClose, dishName, currentUrl, onSelect }: I
 // --- Helpers ---
 
 const saveToExternalApi = async (user: User | null, potluckId: string, potluckData: Potluck) => {
-  if (!user) return;
+  console.log(`Calling external backup API for potluck ${potluckId}...`);
   try {
-    await fetch(`/api/external-save/${user.uid}`, {
+    const response = await fetch('/api/external-save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        userId: user ? user.uid : "",
         Id: potluckId,
         Content: JSON.stringify(potluckData)
       })
     });
+    console.log(`External backup API response status: ${response.status}`);
   } catch (err) {
-    console.error("External API proxy error:", err);
+    console.error("External backup API proxy error:", err);
   }
 };
 
@@ -495,7 +503,18 @@ const HomePage = ({ user }: { user: User | null }) => {
     );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Potluck));
+      const list = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+          title: "Untitled Potluck",
+          description: "",
+          totalPeople: 0,
+          guests: [],
+          dishes: [],
+          ...data, 
+          id: doc.id 
+        } as Potluck;
+      });
       setPotlucks(list);
       setLoading(false);
     }, (error) => {
@@ -1163,7 +1182,27 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     if (!id) return;
     const unsubscribe = onSnapshot(doc(db, 'potlucks', id), (snapshot) => {
       if (snapshot.exists()) {
-        setPotluck({ ...snapshot.data(), id: snapshot.id } as Potluck);
+        const data = snapshot.data();
+        const fullPotluck = { 
+          title: "Untitled Potluck",
+          description: "",
+          totalPeople: 0,
+          guests: [],
+          dishes: [],
+          ...data, 
+          id: snapshot.id 
+        } as Potluck;
+        
+        setPotluck(fullPotluck);
+        
+        // Update lastSavedRef to match the server state
+        const replacer = (key: string, value: any) => {
+          if (value && typeof value === 'object' && 'seconds' in value && 'nanoseconds' in value) {
+            return `${value.seconds}.${value.nanoseconds}`;
+          }
+          return value;
+        };
+        lastSavedRef.current = JSON.stringify(fullPotluck, replacer);
       } else {
         setPotluck(null);
       }
@@ -1197,14 +1236,16 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
   };
 
   const handleSave = async (updatedPotluck?: Potluck | any, action?: string) => {
-    // If updatedPotluck is an event (from onBlur), ignore it and use current state
+    // If updatedPotluck is an event (from onBlur), ignore it and use current state from ref
     const isPotluck = updatedPotluck && typeof updatedPotluck === 'object' && 'dishes' in updatedPotluck;
     const potluckToSave = isPotluck ? updatedPotluck : potluckRef.current;
     
-    if (!potluckToSave || !id || !potluckToSave.title?.trim()) return;
+    if (!potluckToSave || !id || !potluckToSave.title?.trim()) {
+      console.log("Save skipped: No potluck data or missing title");
+      return;
+    }
 
     // Avoid unnecessary saves if nothing changed
-    // Use a replacer to handle Timestamp objects consistently
     const replacer = (key: string, value: any) => {
       if (value && typeof value === 'object' && 'seconds' in value && 'nanoseconds' in value) {
         return `${value.seconds}.${value.nanoseconds}`;
@@ -1214,14 +1255,14 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     
     const currentStringified = JSON.stringify(potluckToSave, replacer);
     if (currentStringified === lastSavedRef.current) {
+      console.log("Save skipped: No changes detected");
       return;
     }
 
+    console.log("Saving potluck and calling external API...");
     setIsSaving(true);
     try {
-      if (user) {
-        await saveToExternalApi(user, id, potluckToSave);
-      }
+      await saveToExternalApi(user, id, potluckToSave);
       await setDoc(doc(db, 'potlucks', id), potluckToSave);
       
       lastSavedRef.current = currentStringified;
@@ -1339,10 +1380,12 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
 
   const updateGuest = (guestId: string, name: string) => {
     if (!potluck) return;
-    setPotluck({
+    const updated = {
       ...potluck,
       guests: potluck.guests.map(g => g.id === guestId ? { ...g, name } : g)
-    });
+    };
+    setPotluck(updated);
+    potluckRef.current = updated;
   };
 
   const reorderGuests = (newGuests: Guest[]) => {
@@ -1356,9 +1399,10 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     if (!potluck) return;
     const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const newDish: Dish = { id: uuidv4(), name: "", description: "", count: 1, ownerIds: [], color: randomColor };
+    const newDish: Dish = { id: uuidv4(), name: "", description: "", count: 1, ownerIds: [], color: randomColor, locked: false };
     const updated = { ...potluck, dishes: [...potluck.dishes, newDish] };
     setPotluck(updated);
+    potluckRef.current = updated;
     handleSave(updated, "Added a new dish");
   };
 
@@ -1372,10 +1416,12 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
 
   const updateDish = (dishId: string, updates: Partial<Dish>) => {
     if (!potluck) return;
-    setPotluck({
+    const updated = {
       ...potluck,
       dishes: potluck.dishes.map(d => d.id === dishId ? { ...d, ...updates } : d)
-    });
+    };
+    setPotluck(updated);
+    potluckRef.current = updated;
   };
 
   const toggleOwner = (dishId: string, guestId: string) => {
@@ -1392,7 +1438,8 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       dishes: potluck.dishes.map(d => d.id === dishId ? { ...d, ownerIds: newOwners } : d)
     };
     setPotluck(updated);
-    handleSave(updated);
+    potluckRef.current = updated;
+    handleSave(updated, "Toggled dish owner");
   };
 
   const toggleDishLock = (dishId: string) => {
@@ -1404,6 +1451,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       dishes: potluck.dishes.map(d => d.id === dishId ? { ...d, locked: !d.locked } : d)
     };
     setPotluck(updated);
+    potluckRef.current = updated;
     handleSave(updated, `${dish.locked ? 'Unlocked' : 'Locked'} dish: ${dish.name || "Unnamed"}`);
   };
 
@@ -1493,7 +1541,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                 <input 
                   type="text" 
                   value={potluck.title}
-                  onChange={(e) => setPotluck({ ...potluck, title: e.target.value })}
+                  onChange={(e) => {
+                    const updated = { ...potluck, title: e.target.value };
+                    setPotluck(updated);
+                    potluckRef.current = updated;
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       handleSave();
@@ -1506,7 +1558,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                 <textarea 
                   value={potluck.description || ""}
                   placeholder="Add a description..."
-                  onChange={(e) => setPotluck({ ...potluck, description: e.target.value })}
+                  onChange={(e) => {
+                    const updated = { ...potluck, description: e.target.value };
+                    setPotluck(updated);
+                    potluckRef.current = updated;
+                  }}
                   onBlur={() => handleSave()}
                   className="w-full bg-transparent text-zinc-500 text-sm resize-none focus:outline-none border-b border-transparent hover:border-zinc-200 focus:border-emerald-500 transition-all py-1 min-w-0 break-words"
                   rows={2}
@@ -1529,7 +1585,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                 <input 
                   type="number"
                   value={potluck.totalPeople || 0}
-                  onChange={(e) => setPotluck({ ...potluck, totalPeople: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => {
+                    const updated = { ...potluck, totalPeople: parseInt(e.target.value) || 0 };
+                    setPotluck(updated);
+                    potluckRef.current = updated;
+                  }}
                   onBlur={() => handleSave()}
                   title="Number of people this potluck serves"
                   className="text-xl font-black text-blue-700 bg-transparent w-full text-center focus:outline-none"
