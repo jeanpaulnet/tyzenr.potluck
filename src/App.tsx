@@ -153,6 +153,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 interface Guest {
   id: string;
   name: string;
+  locked?: boolean;
 }
 
 interface Dish {
@@ -179,6 +180,9 @@ interface Potluck {
   dishes: Dish[];
   otherItems?: Dish[];
   version?: number;
+  dishesLocked?: boolean;
+  otherItemsLocked?: boolean;
+  guestsLocked?: boolean;
 }
 
 // --- Image Search Modal ---
@@ -854,7 +858,7 @@ const DishItem: React.FC<DishItemProps> = ({
   const isOwned = dish.ownerIds.length > 0;
   const bgColor = dish.locked 
     ? 'border-zinc-300 shadow-inner bg-zinc-100' 
-    : (type === 'dish' ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-blue-50 border-blue-200 shadow-sm');
+    : (type === 'dish' ? 'bg-emerald-100 border-emerald-300 shadow-sm' : 'bg-blue-200 border-blue-400 shadow-sm');
 
   return (
     <div 
@@ -897,7 +901,7 @@ const DishItem: React.FC<DishItemProps> = ({
       {isOwner && (
         <button 
           onClick={() => toggleDishLock(dish.id, type)}
-          className={`absolute bottom-2 right-2 p-1 rounded-md transition-all shadow-sm z-30 ${dish.locked ? 'bg-zinc-500 text-white' : (type === 'dish' ? 'bg-emerald-500 text-white hover:bg-emerald-600 border border-black/5' : 'bg-blue-500 text-white hover:bg-blue-600 border border-black/5')}`}
+          className={`absolute bottom-2 right-2 p-1 rounded-md transition-all shadow-sm z-30 ${dish.locked ? 'bg-zinc-500 text-white' : (type === 'dish' ? 'bg-emerald-500 text-white hover:bg-emerald-600 border border-black/5' : 'bg-blue-600 text-white hover:bg-blue-700 border border-black/5')}`}
           title={dish.locked ? "Unlock item" : "Lock item"}
         >
           {dish.locked ? <Lock size={10} /> : <Unlock size={10} />}
@@ -947,7 +951,7 @@ const DishItem: React.FC<DishItemProps> = ({
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-white/90 border border-transparent rounded-xl focus:outline-none transition-all font-semibold text-zinc-900 text-sm ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-500'}`}
+                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-white/90 border border-transparent rounded-xl focus:outline-none transition-all font-semibold text-zinc-900 text-sm ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-600'}`}
                 />
                 <input 
                   type="text" 
@@ -961,7 +965,7 @@ const DishItem: React.FC<DishItemProps> = ({
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-white/80 border border-transparent rounded-xl focus:outline-none transition-all text-zinc-900 text-xs ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-500'}`}
+                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-white/80 border border-transparent rounded-xl focus:outline-none transition-all text-zinc-900 text-xs ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-600'}`}
                 />
               </div>
             ) : (
@@ -975,9 +979,11 @@ const DishItem: React.FC<DishItemProps> = ({
           </div>
           <div className="w-20 md:w-24 relative group/tooltip">
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
-              Number of servings
+              {type === 'dish' ? 'Number of servings' : 'Quantity'}
             </div>
-            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block mb-1 leading-tight">Serves</span>
+            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block mb-1 leading-tight">
+              {type === 'dish' ? 'Serves' : 'Count'}
+            </span>
             {canEditThisDish ? (
               <input 
                 type="number" 
@@ -990,8 +996,8 @@ const DishItem: React.FC<DishItemProps> = ({
                   }
                 }}
                 onBlur={() => handleSave()}
-                title="Number of servings"
-                className={`w-full px-2 py-1.5 bg-white/90 border border-transparent rounded-xl focus:outline-none transition-all font-medium text-zinc-900 text-sm text-center ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-500'}`}
+                title={type === 'dish' ? "Number of servings" : "Quantity"}
+                className={`w-full px-2 py-1.5 bg-white/90 border border-transparent rounded-xl focus:outline-none transition-all font-medium text-zinc-900 text-sm text-center ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-600'}`}
               />
             ) : (
               <div className="font-medium text-zinc-700 text-sm text-center">{dish.count}</div>
@@ -1013,7 +1019,7 @@ const DishItem: React.FC<DishItemProps> = ({
               onClick={() => toggleOwner(dish.id, guest.id, type)}
               className={`px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
                 isSelected
-                  ? (type === 'dish' ? 'bg-green-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm')
+                  ? (type === 'dish' ? 'bg-green-500 text-white shadow-sm' : 'bg-blue-600 text-white shadow-sm')
                   : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
               } ${!canToggle ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
@@ -1034,13 +1040,14 @@ interface GuestItemProps {
   isOwner: boolean;
   updateGuest: (id: string, name: string) => void;
   removeGuest: (id: string) => void;
+  toggleGuestLock: (id: string) => void;
   setDeleteConfirmId: (id: string | null) => void;
   handleSave: (updatedPotluck?: any, action?: string) => Promise<void>;
 }
 
-const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest, setDeleteConfirmId, handleSave }: GuestItemProps) => {
+const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest, toggleGuestLock, setDeleteConfirmId, handleSave }: GuestItemProps) => {
   const controls = useDragControls();
-  const canEditThisGuest = canEdit;
+  const canEditThisGuest = isOwner || (canEdit && !guest.locked);
 
   return (
     <Reorder.Item 
@@ -1050,7 +1057,7 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className={`flex items-center gap-3 group relative pl-10 pr-12 py-2 rounded-2xl transition-all bg-blue-50/50 hover:bg-blue-50 border border-transparent hover:border-blue-100`}
+      className={`flex items-center gap-3 group relative pl-10 pr-12 py-2 rounded-2xl transition-all bg-purple-50/50 hover:bg-purple-50 border border-transparent hover:border-purple-100`}
     >
       {canEdit && (
         <div 
@@ -1086,11 +1093,11 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
                   }
                 }}
                 onBlur={() => handleSave()}
-                className="absolute inset-0 w-full px-4 py-2 bg-zinc-200 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all"
+                className="absolute inset-0 w-full px-4 py-2 bg-purple-100 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all"
               />
             </>
           ) : (
-            <div className="px-4 py-2 font-semibold text-zinc-900 truncate">{guest.name || "Guest"}</div>
+            <div className="px-4 py-2 font-semibold text-zinc-900 truncate bg-purple-100 rounded-xl">{guest.name || "Guest"}</div>
           )}
         </div>
       </div>
@@ -1106,19 +1113,30 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
         ))}
       </div>
       
-      <div className="flex items-center gap-1 flex-shrink-0">
-        {isOwner && (
-          <div className="absolute bottom-2 right-2 flex items-center gap-1">
-            <button 
-              onClick={() => setDeleteConfirmId(guest.id)}
-              className="w-5 h-5 bg-red-400 text-white rounded-full flex items-center justify-center shadow-sm opacity-30 group-hover:opacity-100 transition-all hover:bg-red-500 flex-shrink-0"
-              title="Remove guest"
-            >
-              <X size={12} strokeWidth={3} />
-            </button>
-          </div>
-        )}
-      </div>
+      {!isOwner && guest.locked && (
+        <div className="absolute bottom-2 right-2 text-amber-500 z-30" title="This guest is locked by the creator">
+          <Lock size={12} />
+        </div>
+      )}
+      
+      {isOwner && (
+        <div className="absolute top-1/2 -translate-y-1/2 right-2 flex flex-col gap-1 z-30">
+          <button 
+            onClick={() => setDeleteConfirmId(guest.id)}
+            className="w-5 h-5 bg-red-400 text-white rounded-full flex items-center justify-center shadow-sm opacity-30 group-hover:opacity-100 transition-all hover:bg-red-500 flex-shrink-0"
+            title="Remove guest"
+          >
+            <X size={12} strokeWidth={3} />
+          </button>
+          <button 
+            onClick={() => toggleGuestLock(guest.id)}
+            className={`w-5 h-5 rounded-full flex items-center justify-center shadow-sm transition-all flex-shrink-0 ${guest.locked ? 'bg-zinc-500 text-white' : 'bg-purple-500 text-white hover:bg-purple-600 border border-black/5'}`}
+            title={guest.locked ? "Unlock guest" : "Lock guest"}
+          >
+            {guest.locked ? <Lock size={10} /> : <Unlock size={10} />}
+          </button>
+        </div>
+      )}
     </Reorder.Item>
   );
 };
@@ -1448,7 +1466,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
 
   const addGuest = () => {
     if (!potluck) return;
-    const newGuest: Guest = { id: uuidv4(), name: "" };
+    const newGuest: Guest = { id: uuidv4(), name: "", locked: false };
     const updated = { ...potluck, guests: [...potluck.guests, newGuest] };
     setPotluck(updated);
     handleSave(updated, "Added a new guest");
@@ -1472,6 +1490,31 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     setPotluck(updated);
     potluckRef.current = updated;
     handleSave(updated, `Removed guest: ${guest?.name || "Unnamed"}`);
+  };
+
+  const toggleSectionLock = (section: 'dishes' | 'otherItems' | 'guests') => {
+    if (!potluck || !isOwner) return;
+    const field = `${section}Locked` as keyof Potluck;
+    const updated = {
+      ...potluck,
+      [field]: !potluck[field]
+    };
+    setPotluck(updated);
+    potluckRef.current = updated;
+    handleSave(updated, `${updated[field] ? 'Locked' : 'Unlocked'} ${section} section`);
+  };
+
+  const toggleGuestLock = (guestId: string) => {
+    if (!potluck || !isOwner) return;
+    const guest = potluck.guests.find(g => g.id === guestId);
+    if (!guest) return;
+    const updated = {
+      ...potluck,
+      guests: potluck.guests.map(g => g.id === guestId ? { ...g, locked: !g.locked } : g)
+    };
+    setPotluck(updated);
+    potluckRef.current = updated;
+    handleSave(updated, `${guest.locked ? 'Unlocked' : 'Locked'} guest: ${guest.name || "Unnamed"}`);
   };
 
   const updateGuest = (guestId: string, name: string) => {
@@ -1777,14 +1820,25 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                   <Utensils size={20} className="text-green-500" />
                   Dishes ({potluck.dishes.length})
                 </div>
-                {canEdit && (
-                  <button 
-                    onClick={addDish}
-                    className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all"
-                  >
-                    <Plus size={16} />
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {isOwner && (
+                    <button 
+                      onClick={() => toggleSectionLock('dishes')}
+                      className={`p-1.5 rounded-lg transition-all ${potluck.dishesLocked ? 'bg-zinc-500 text-white' : 'bg-white text-zinc-400 hover:text-zinc-600 border border-black/5'}`}
+                      title={potluck.dishesLocked ? "Unlock Dishes section" : "Lock Dishes section"}
+                    >
+                      {potluck.dishesLocked ? <Lock size={16} /> : <Unlock size={16} />}
+                    </button>
+                  )}
+                  {canEdit && (isOwner || !potluck.dishesLocked) && (
+                    <button 
+                      onClick={addDish}
+                      className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="p-6">
                 <SortableContext 
@@ -1818,10 +1872,10 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                     <p className="text-zinc-400 text-sm">No dishes added yet.</p>
                   </div>
                 )}
-                {canEdit && (
+                {canEdit && (isOwner || !potluck.dishesLocked) && (
                   <button 
                     onClick={addDish}
-                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 hover:text-green-500 hover:border-green-500 hover:bg-green-50/50 transition-all flex items-center justify-center gap-2 font-medium"
+                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 hover:text-green-500 hover:border-green-500 hover:bg-green-100/50 transition-all flex items-center justify-center gap-2 font-medium"
                   >
                     <Plus size={20} />
                     Add Another Dish
@@ -1836,17 +1890,28 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
             <div className="bg-zinc-50 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
               <div className="px-6 py-5 border-b border-black/5 bg-zinc-100 flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-zinc-900">
-                  <Package size={20} className="text-blue-500" />
+                  <Package size={20} className="text-blue-600" />
                   Other Items ({(potluck.otherItems || []).length})
                 </div>
-                {canEdit && (
-                  <button 
-                    onClick={addOtherItem}
-                    className="p-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all"
-                  >
-                    <Plus size={16} />
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {isOwner && (
+                    <button 
+                      onClick={() => toggleSectionLock('otherItems')}
+                      className={`p-1.5 rounded-lg transition-all ${potluck.otherItemsLocked ? 'bg-zinc-500 text-white' : 'bg-white text-zinc-400 hover:text-zinc-600 border border-black/5'}`}
+                      title={potluck.otherItemsLocked ? "Unlock Other Items section" : "Lock Other Items section"}
+                    >
+                      {potluck.otherItemsLocked ? <Lock size={16} /> : <Unlock size={16} />}
+                    </button>
+                  )}
+                  {canEdit && (isOwner || !potluck.otherItemsLocked) && (
+                    <button 
+                      onClick={addOtherItem}
+                      className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="p-6">
                 <SortableContext 
@@ -1880,10 +1945,10 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                     <p className="text-zinc-400 text-sm">No other items added yet.</p>
                   </div>
                 )}
-                {canEdit && (
+                {canEdit && (isOwner || !potluck.otherItemsLocked) && (
                   <button 
                     onClick={addOtherItem}
-                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-50/50 transition-all flex items-center justify-center gap-2 font-medium"
+                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-100/50 transition-all flex items-center justify-center gap-2 font-medium"
                   >
                     <Plus size={20} />
                     Add Another Item
@@ -1903,14 +1968,25 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                 <Users size={20} className="text-purple-500" />
                 Guests ({potluck.guests.length})
               </div>
-              {canEdit && (
-                <button 
-                  onClick={addGuest}
-                  className="p-1.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all"
-                >
-                  <Plus size={16} />
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {isOwner && (
+                  <button 
+                    onClick={() => toggleSectionLock('guests')}
+                    className={`p-1.5 rounded-lg transition-all ${potluck.guestsLocked ? 'bg-zinc-500 text-white' : 'bg-white text-zinc-400 hover:text-zinc-600 border border-black/5'}`}
+                    title={potluck.guestsLocked ? "Unlock Guests section" : "Lock Guests section"}
+                  >
+                    {potluck.guestsLocked ? <Lock size={16} /> : <Unlock size={16} />}
+                  </button>
+                )}
+                {canEdit && (isOwner || !potluck.guestsLocked) && (
+                  <button 
+                    onClick={addGuest}
+                    className="p-1.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all"
+                  >
+                    <Plus size={16} />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="p-6 space-y-4">
               <Reorder.Group axis="y" values={potluck.guests} onReorder={reorderGuests} className="space-y-4">
@@ -1924,6 +2000,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                       isOwner={isOwner}
                       updateGuest={updateGuest}
                       removeGuest={removeGuest}
+                      toggleGuestLock={toggleGuestLock}
                       setDeleteConfirmId={(id) => {
                         setDeleteConfirmId(id);
                         setDeleteType(id ? 'guest' : null);
@@ -1936,7 +2013,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
               {potluck.guests.length === 0 && (
                 <p className="text-center text-zinc-400 py-4 text-sm italic">No guests added yet.</p>
               )}
-              {canEdit && (
+              {canEdit && (isOwner || !potluck.guestsLocked) && (
                 <button 
                   onClick={addGuest}
                   className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-purple-500 hover:border-purple-500 hover:bg-purple-50/50 transition-all flex items-center justify-center gap-2 font-medium"
