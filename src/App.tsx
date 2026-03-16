@@ -153,7 +153,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 interface Guest {
   id: string;
   name: string;
-  locked?: boolean;
 }
 
 interface Dish {
@@ -1040,14 +1039,13 @@ interface GuestItemProps {
   isOwner: boolean;
   updateGuest: (id: string, name: string) => void;
   removeGuest: (id: string) => void;
-  toggleGuestLock: (id: string) => void;
   setDeleteConfirmId: (id: string | null) => void;
   handleSave: (updatedPotluck?: any, action?: string) => Promise<void>;
 }
 
-const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest, toggleGuestLock, setDeleteConfirmId, handleSave }: GuestItemProps) => {
+const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest, setDeleteConfirmId, handleSave }: GuestItemProps) => {
   const controls = useDragControls();
-  const canEditThisGuest = isOwner || (canEdit && !guest.locked);
+  const canEditThisGuest = isOwner || canEdit;
 
   return (
     <Reorder.Item 
@@ -1113,12 +1111,6 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
         ))}
       </div>
       
-      {!isOwner && guest.locked && (
-        <div className="absolute bottom-2 right-2 text-amber-500 z-30" title="This guest is locked by the creator">
-          <Lock size={12} />
-        </div>
-      )}
-      
       {isOwner && (
         <div className="absolute top-1/2 -translate-y-1/2 right-2 flex flex-col gap-1 z-30">
           <button 
@@ -1127,13 +1119,6 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
             title="Remove guest"
           >
             <X size={12} strokeWidth={3} />
-          </button>
-          <button 
-            onClick={() => toggleGuestLock(guest.id)}
-            className={`w-5 h-5 rounded-full flex items-center justify-center shadow-sm transition-all flex-shrink-0 ${guest.locked ? 'bg-zinc-500 text-white' : 'bg-purple-500 text-white hover:bg-purple-600 border border-black/5'}`}
-            title={guest.locked ? "Unlock guest" : "Lock guest"}
-          >
-            {guest.locked ? <Lock size={10} /> : <Unlock size={10} />}
           </button>
         </div>
       )}
@@ -1466,7 +1451,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
 
   const addGuest = () => {
     if (!potluck) return;
-    const newGuest: Guest = { id: uuidv4(), name: "", locked: false };
+    const newGuest: Guest = { id: uuidv4(), name: "" };
     const updated = { ...potluck, guests: [...potluck.guests, newGuest] };
     setPotluck(updated);
     handleSave(updated, "Added a new guest");
@@ -1502,19 +1487,6 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
     setPotluck(updated);
     potluckRef.current = updated;
     handleSave(updated, `${updated[field] ? 'Locked' : 'Unlocked'} ${section} section`);
-  };
-
-  const toggleGuestLock = (guestId: string) => {
-    if (!potluck || !isOwner) return;
-    const guest = potluck.guests.find(g => g.id === guestId);
-    if (!guest) return;
-    const updated = {
-      ...potluck,
-      guests: potluck.guests.map(g => g.id === guestId ? { ...g, locked: !g.locked } : g)
-    };
-    setPotluck(updated);
-    potluckRef.current = updated;
-    handleSave(updated, `${guest.locked ? 'Unlocked' : 'Locked'} guest: ${guest.name || "Unnamed"}`);
   };
 
   const updateGuest = (guestId: string, name: string) => {
@@ -1830,7 +1802,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                       {potluck.dishesLocked ? <Lock size={16} /> : <Unlock size={16} />}
                     </button>
                   )}
-                  {canEdit && (isOwner || !potluck.dishesLocked) && (
+                  {canEdit && !potluck.dishesLocked && (
                     <button 
                       onClick={addDish}
                       className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all"
@@ -1872,7 +1844,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                     <p className="text-zinc-400 text-sm">No dishes added yet.</p>
                   </div>
                 )}
-                {canEdit && (isOwner || !potluck.dishesLocked) && (
+                {canEdit && !potluck.dishesLocked && (
                   <button 
                     onClick={addDish}
                     className="w-full py-4 mt-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 hover:text-green-500 hover:border-green-500 hover:bg-green-100/50 transition-all flex items-center justify-center gap-2 font-medium"
@@ -1903,7 +1875,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                       {potluck.otherItemsLocked ? <Lock size={16} /> : <Unlock size={16} />}
                     </button>
                   )}
-                  {canEdit && (isOwner || !potluck.otherItemsLocked) && (
+                  {canEdit && !potluck.otherItemsLocked && (
                     <button 
                       onClick={addOtherItem}
                       className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
@@ -1945,7 +1917,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                     <p className="text-zinc-400 text-sm">No other items added yet.</p>
                   </div>
                 )}
-                {canEdit && (isOwner || !potluck.otherItemsLocked) && (
+                {canEdit && !potluck.otherItemsLocked && (
                   <button 
                     onClick={addOtherItem}
                     className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-100/50 transition-all flex items-center justify-center gap-2 font-medium"
@@ -1978,7 +1950,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                     {potluck.guestsLocked ? <Lock size={16} /> : <Unlock size={16} />}
                   </button>
                 )}
-                {canEdit && (isOwner || !potluck.guestsLocked) && (
+                {canEdit && !potluck.guestsLocked && (
                   <button 
                     onClick={addGuest}
                     className="p-1.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all"
@@ -2000,7 +1972,6 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                       isOwner={isOwner}
                       updateGuest={updateGuest}
                       removeGuest={removeGuest}
-                      toggleGuestLock={toggleGuestLock}
                       setDeleteConfirmId={(id) => {
                         setDeleteConfirmId(id);
                         setDeleteType(id ? 'guest' : null);
@@ -2013,7 +1984,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
               {potluck.guests.length === 0 && (
                 <p className="text-center text-zinc-400 py-4 text-sm italic">No guests added yet.</p>
               )}
-              {canEdit && (isOwner || !potluck.guestsLocked) && (
+              {canEdit && !potluck.guestsLocked && (
                 <button 
                   onClick={addGuest}
                   className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-purple-500 hover:border-purple-500 hover:bg-purple-50/50 transition-all flex items-center justify-center gap-2 font-medium"
