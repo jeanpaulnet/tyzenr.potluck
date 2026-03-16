@@ -49,6 +49,7 @@ import {
   Upload,
   Globe,
   StickyNote,
+  MessageSquare,
   Lock,
   Unlock,
   Package
@@ -171,6 +172,7 @@ interface Potluck {
   description?: string;
   totalPeople?: number;
   notes?: string;
+  comments?: string;
   ownerId: string;
   createdAt: Timestamp;
   guests: Guest[];
@@ -851,10 +853,8 @@ const DishItem: React.FC<DishItemProps> = ({
   const canEditThisDish = isOwner || (canEdit && !dish.locked);
   const isOwned = dish.ownerIds.length > 0;
   const bgColor = dish.locked 
-    ? 'border-zinc-300 shadow-inner bg-zinc-200' 
-    : isOwned 
-      ? (type === 'dish' ? 'bg-white border-zinc-200 shadow-sm' : 'bg-purple-50 border-purple-200')
-      : 'bg-[#f5f5f5] border-black/10';
+    ? 'border-zinc-300 shadow-inner bg-zinc-100' 
+    : (type === 'dish' ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-blue-50 border-blue-200 shadow-sm');
 
   return (
     <div 
@@ -897,7 +897,7 @@ const DishItem: React.FC<DishItemProps> = ({
       {isOwner && (
         <button 
           onClick={() => toggleDishLock(dish.id, type)}
-          className={`absolute bottom-2 right-2 p-1 rounded-md transition-all shadow-sm z-30 ${dish.locked ? 'bg-amber-500 text-white' : 'bg-white text-zinc-400 hover:text-amber-500 border border-black/5'}`}
+          className={`absolute bottom-2 right-2 p-1 rounded-md transition-all shadow-sm z-30 ${dish.locked ? 'bg-zinc-500 text-white' : (type === 'dish' ? 'bg-emerald-500 text-white hover:bg-emerald-600 border border-black/5' : 'bg-blue-500 text-white hover:bg-blue-600 border border-black/5')}`}
           title={dish.locked ? "Unlock item" : "Lock item"}
         >
           {dish.locked ? <Lock size={10} /> : <Unlock size={10} />}
@@ -947,7 +947,7 @@ const DishItem: React.FC<DishItemProps> = ({
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:outline-none transition-all font-semibold text-zinc-900 text-sm ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-purple-500'}`}
+                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-white/90 border border-transparent rounded-xl focus:outline-none transition-all font-semibold text-zinc-900 text-sm ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-500'}`}
                 />
                 <input 
                   type="text" 
@@ -961,21 +961,21 @@ const DishItem: React.FC<DishItemProps> = ({
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-yellow-50 border border-transparent rounded-xl focus:outline-none transition-all text-zinc-900 text-xs ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-purple-500'}`}
+                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-white/80 border border-transparent rounded-xl focus:outline-none transition-all text-zinc-900 text-xs ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-500'}`}
                 />
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full min-w-0">
                 <div className="font-semibold text-zinc-900 text-sm truncate sm:flex-1 min-w-0">{dish.name || (type === 'dish' ? "Unnamed Dish" : "Unnamed Item")}</div>
                 {dish.description && (
-                  <div className="px-3 py-1 bg-yellow-50 rounded-lg text-zinc-900 text-xs leading-tight sm:flex-1 min-w-0 break-words">{dish.description}</div>
+                  <div className="px-3 py-1 bg-white/80 rounded-lg text-zinc-900 text-xs leading-tight sm:flex-1 min-w-0 break-words">{dish.description}</div>
                 )}
               </div>
             )}
           </div>
           <div className="w-20 md:w-24 relative group/tooltip">
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
-              Total quantity or count
+              Number of servings
             </div>
             <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider block mb-1 leading-tight">Serves</span>
             {canEditThisDish ? (
@@ -990,8 +990,8 @@ const DishItem: React.FC<DishItemProps> = ({
                   }
                 }}
                 onBlur={() => handleSave()}
-                title="Total quantity or count"
-                className={`w-full px-2 py-1.5 bg-zinc-50 border border-transparent rounded-xl focus:outline-none transition-all font-medium text-zinc-900 text-sm text-center ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-purple-500'}`}
+                title="Number of servings"
+                className={`w-full px-2 py-1.5 bg-white/90 border border-transparent rounded-xl focus:outline-none transition-all font-medium text-zinc-900 text-sm text-center ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-500'}`}
               />
             ) : (
               <div className="font-medium text-zinc-700 text-sm text-center">{dish.count}</div>
@@ -1013,7 +1013,7 @@ const DishItem: React.FC<DishItemProps> = ({
               onClick={() => toggleOwner(dish.id, guest.id, type)}
               className={`px-2 py-0.5 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
                 isSelected
-                  ? (type === 'dish' ? 'bg-green-500 text-white shadow-sm' : 'bg-purple-500 text-white shadow-sm')
+                  ? (type === 'dish' ? 'bg-green-500 text-white shadow-sm' : 'bg-blue-500 text-white shadow-sm')
                   : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
               } ${!canToggle ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
@@ -1771,8 +1771,8 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
         <div className="flex flex-col gap-8">
           {/* Dishes Section */}
           <div className="w-full" id="dishes-container">
-            <div className="bg-zinc-200 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
-              <div className="px-6 py-5 border-b border-black/5 bg-zinc-300 flex items-center justify-between">
+            <div className="bg-zinc-50 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+              <div className="px-6 py-5 border-b border-black/5 bg-zinc-100 flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-zinc-900">
                   <Utensils size={20} className="text-green-500" />
                   Dishes ({potluck.dishes.length})
@@ -1814,14 +1814,14 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                   </div>
                 </SortableContext>
                 {potluck.dishes.length === 0 && (
-                    <div className="text-center py-12 bg-zinc-200 rounded-2xl border-2 border-dashed border-zinc-300">
+                    <div className="text-center py-12 bg-zinc-100 rounded-2xl border-2 border-dashed border-zinc-200">
                     <p className="text-zinc-400 text-sm">No dishes added yet.</p>
                   </div>
                 )}
                 {canEdit && (
                   <button 
                     onClick={addDish}
-                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-green-500 hover:border-green-500 hover:bg-green-50/50 transition-all flex items-center justify-center gap-2 font-medium"
+                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 hover:text-green-500 hover:border-green-500 hover:bg-green-50/50 transition-all flex items-center justify-center gap-2 font-medium"
                   >
                     <Plus size={20} />
                     Add Another Dish
@@ -1833,16 +1833,16 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
 
           {/* Other Items Section */}
           <div className="w-full" id="other-container">
-            <div className="bg-zinc-100 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
-              <div className="px-6 py-5 border-b border-black/5 bg-zinc-200 flex items-center justify-between">
+            <div className="bg-zinc-50 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+              <div className="px-6 py-5 border-b border-black/5 bg-zinc-100 flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-zinc-900">
-                  <Package size={20} className="text-purple-500" />
+                  <Package size={20} className="text-blue-500" />
                   Other Items ({(potluck.otherItems || []).length})
                 </div>
                 {canEdit && (
                   <button 
                     onClick={addOtherItem}
-                    className="p-1.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all"
+                    className="p-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all"
                   >
                     <Plus size={16} />
                   </button>
@@ -1876,14 +1876,14 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                   </div>
                 </SortableContext>
                 {(potluck.otherItems || []).length === 0 && (
-                    <div className="text-center py-12 bg-zinc-100 rounded-2xl border-2 border-dashed border-zinc-200">
+                    <div className="text-center py-12 bg-zinc-50 rounded-2xl border-2 border-dashed border-zinc-200">
                     <p className="text-zinc-400 text-sm">No other items added yet.</p>
                   </div>
                 )}
                 {canEdit && (
                   <button 
                     onClick={addOtherItem}
-                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-purple-500 hover:border-purple-500 hover:bg-purple-50/50 transition-all flex items-center justify-center gap-2 font-medium"
+                    className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-50/50 transition-all flex items-center justify-center gap-2 font-medium"
                   >
                     <Plus size={20} />
                     Add Another Item
@@ -1894,35 +1894,6 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
           </div>
         </div>
       </DndContext>
-
-        {/* Notes Section */}
-        <div className="w-full">
-          <div className="bg-zinc-100 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
-            <div className="px-6 py-5 border-b border-black/5 bg-zinc-200 flex items-center gap-2 font-bold text-zinc-900">
-              <StickyNote size={20} className="text-amber-500" />
-              Notes
-            </div>
-            <div className="p-6">
-              {canEdit ? (
-                <textarea 
-                  value={potluck.notes || ""}
-                  placeholder="Add any special notes or instructions here..."
-                  onChange={(e) => {
-                    const updated = { ...potluck, notes: e.target.value };
-                    setPotluck(updated);
-                    potluckRef.current = updated;
-                  }}
-                  onBlur={() => handleSave()}
-                  className="w-full min-h-[60px] p-4 bg-white border border-zinc-200 rounded-2xl focus:border-amber-500 focus:outline-none transition-all text-zinc-900 text-sm resize-none"
-                />
-              ) : (
-                <div className="min-h-[32px] p-4 bg-white border border-zinc-100 rounded-2xl text-zinc-600 text-sm whitespace-pre-wrap italic">
-                  {potluck.notes || "No notes added."}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
 
         {/* Guests Section */}
         <div className="w-full">
@@ -1973,6 +1944,63 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                   <Plus size={20} />
                   Add Another Guest
                 </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Notes & Comments Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+          {/* Notes */}
+          <div className="bg-zinc-100 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-black/5 bg-zinc-200 flex items-center gap-2 font-bold text-zinc-900">
+              <StickyNote size={20} className="text-amber-500" />
+              Notes
+            </div>
+            <div className="p-6">
+              {canEdit ? (
+                <textarea 
+                  value={potluck.notes || ""}
+                  placeholder="Add any special notes or instructions here..."
+                  onChange={(e) => {
+                    const updated = { ...potluck, notes: e.target.value };
+                    setPotluck(updated);
+                    potluckRef.current = updated;
+                  }}
+                  onBlur={() => handleSave()}
+                  className="w-full min-h-[60px] p-4 bg-white border border-zinc-200 rounded-2xl focus:border-amber-500 focus:outline-none transition-all text-zinc-900 text-sm resize-none"
+                />
+              ) : (
+                <div className="min-h-[32px] p-4 bg-white border border-zinc-100 rounded-2xl text-zinc-600 text-sm whitespace-pre-wrap italic">
+                  {potluck.notes || "No notes added."}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Comments */}
+          <div className="bg-zinc-100 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-black/5 bg-zinc-200 flex items-center gap-2 font-bold text-zinc-900">
+              <MessageSquare size={20} className="text-blue-500" />
+              Comments
+            </div>
+            <div className="p-6">
+              {canEdit ? (
+                <textarea 
+                  value={potluck.comments || ""}
+                  placeholder="Add any comments or discussion here..."
+                  onChange={(e) => {
+                    const updated = { ...potluck, comments: e.target.value };
+                    setPotluck(updated);
+                    potluckRef.current = updated;
+                  }}
+                  onBlur={() => handleSave()}
+                  className="w-full min-h-[60px] p-4 bg-white border border-zinc-200 rounded-2xl focus:border-blue-500 focus:outline-none transition-all text-zinc-900 text-sm resize-none"
+                />
+              ) : (
+                <div className="min-h-[32px] p-4 bg-white border border-zinc-100 rounded-2xl text-zinc-600 text-sm whitespace-pre-wrap italic">
+                  {potluck.comments || "No comments added."}
+                </div>
               )}
             </div>
           </div>
