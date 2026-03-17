@@ -697,32 +697,33 @@ const HomePage = ({ user }: { user: User | null }) => {
               layoutId={p.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="group bg-zinc-100 border border-black/5 rounded-3xl p-6 hover:shadow-xl hover:shadow-emerald-500/5 transition-all cursor-pointer relative overflow-hidden"
+              className="group bg-white border border-black/5 rounded-3xl p-6 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all cursor-pointer relative overflow-hidden hover:border-emerald-200"
               onClick={() => navigate(`/potluck/${p.id}`)}
             >
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              
               {user?.uid === p.ownerId && (
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
                     setDeleteConfirmId(p.id);
                   }}
-                  className="absolute top-2 right-2 w-5 h-5 bg-red-400 text-white rounded-full flex items-center justify-center shadow-sm opacity-30 group-hover:opacity-100 transition-all hover:bg-red-500 z-10"
+                  className="absolute top-3 right-3 w-6 h-6 bg-red-50 text-red-500 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white z-10"
                   title="Delete potluck"
                 >
                   <X size={14} strokeWidth={3} />
                 </button>
               )}
-              <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ChevronRight className="text-zinc-400" />
-              </div>
-              <h3 className="text-xl font-bold text-zinc-900 mb-4 group-hover:text-emerald-600 transition-colors">{p.title}</h3>
-              <div className="flex items-center gap-6 text-sm text-zinc-500">
-                <div className="flex items-center gap-1.5">
-                  <Users size={16} />
+              
+              <h3 className="text-xl font-bold text-zinc-900 mb-5 group-hover:text-emerald-600 transition-colors">{p.title}</h3>
+              
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 text-zinc-600 rounded-xl font-bold border border-black/5">
+                  <Users size={14} />
                   {p.guests.length} Guests
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Utensils size={16} />
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl font-bold border border-emerald-100/50">
+                  <Utensils size={14} />
                   {p.dishes.length} Dishes
                 </div>
               </div>
@@ -1028,12 +1029,12 @@ const DishItem: React.FC<DishItemProps> = ({
               key={guest.id}
               disabled={!canToggle}
               onClick={() => toggleOwner(dish.id, guest.id, type)}
-              className={`rounded-full font-bold transition-all flex items-center gap-1.5 ${
-                dish.locked ? 'px-5 py-2.5 text-base shadow-md' : 'px-2 py-0.5 text-xs'
+              className={`rounded-full font-bold transition-all flex items-center gap-1 ${
+                dish.locked ? 'px-3.5 py-1.5 text-sm shadow-sm' : 'px-1.5 py-0 text-[9px]'
               } ${
                 isSelected
-                  ? (type === 'dish' ? 'bg-green-500 text-white shadow-sm' : 'bg-blue-600 text-white shadow-sm')
-                  : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
               } ${!canToggle ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               {guest.name || "Guest"}
@@ -1069,7 +1070,7 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      className={`flex items-center group relative rounded-2xl transition-all bg-white hover:bg-zinc-50 border border-black/5 hover:border-purple-100 ${
+      className={`flex items-center group relative rounded-2xl transition-all bg-zinc-50 hover:bg-zinc-100 border border-black/5 hover:border-zinc-200 ${
         potluck.guestsLocked ? 'pl-14 pr-16 py-6 gap-6' : 'pl-10 pr-12 py-4 gap-3'
       }`}
     >
@@ -1983,8 +1984,8 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
 
         {/* Guests Section */}
         <div className="w-full mb-[10px]">
-          <div className="bg-zinc-100 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
-            <div className="px-6 py-5 border-b border-black/5 bg-zinc-200 flex items-center justify-between">
+          <div className="bg-zinc-50/50 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-black/5 bg-zinc-100/50 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-zinc-900">
                 <Users size={16} className="text-purple-500" />
                 Guests ({potluck.guests.length})
@@ -2036,7 +2037,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
               {canEdit && !potluck.guestsLocked && (
                 <button 
                   onClick={addGuest}
-                  className="w-full py-4 mt-4 border-2 border-dashed border-zinc-300 rounded-2xl text-zinc-400 hover:text-purple-500 hover:border-purple-500 hover:bg-purple-50/50 transition-all flex items-center justify-center gap-2 font-medium"
+                  className="w-full py-4 mt-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 hover:text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50 transition-all flex items-center justify-center gap-2 font-medium"
                 >
                   <Plus size={20} />
                   Add Another Guest
