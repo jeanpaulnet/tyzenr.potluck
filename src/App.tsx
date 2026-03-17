@@ -1088,8 +1088,8 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
       )}
 
       <div className={`flex items-center flex-shrink-0 ${potluck.guestsLocked ? 'gap-6' : 'gap-3'}`}>
-        <div className={`${potluck.guestsLocked ? 'w-20 h-20' : 'w-5 h-5'} rounded-lg flex-shrink-0 border border-black/5 bg-purple-50 flex items-center justify-center text-purple-500`}>
-          <Users size={potluck.guestsLocked ? 32 : 8} />
+        <div className={`${potluck.guestsLocked ? 'w-10 h-10' : 'w-4 h-4'} rounded-lg flex-shrink-0 border border-black/5 bg-purple-50 flex items-center justify-center text-purple-500`}>
+          <Users size={potluck.guestsLocked ? 16 : 6} />
         </div>
         <div className="relative min-w-[120px]">
           {canEditThisGuest ? (
@@ -1986,7 +1986,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
           <div className="bg-zinc-100 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
             <div className="px-6 py-5 border-b border-black/5 bg-zinc-200 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-zinc-900">
-                <Users size={20} className="text-purple-500" />
+                <Users size={16} className="text-purple-500" />
                 Guests ({potluck.guests.length})
               </div>
               <div className="flex items-center gap-2">
