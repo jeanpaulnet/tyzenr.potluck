@@ -920,7 +920,7 @@ const DishItem: React.FC<DishItemProps> = ({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div 
-            className="w-12 h-12 rounded-xl flex-shrink-0 shadow-sm border border-black/5 overflow-hidden cursor-pointer group/img relative"
+            className="w-24 h-24 rounded-xl flex-shrink-0 shadow-sm border border-black/5 overflow-hidden cursor-pointer group/img relative"
             style={{ backgroundColor: !dish.imageUrl ? (dish.color || '#E5E7EB') : 'transparent' }}
             onClick={() => canEditThisDish && openImageSearch(dish, type)}
             title={canEditThisDish ? "Click to set image" : ""}
@@ -1033,7 +1033,7 @@ const DishItem: React.FC<DishItemProps> = ({
                 dish.locked ? 'px-3.5 py-1.5 text-sm shadow-sm' : 'px-2.5 py-1 text-[13.5px]'
               } ${
                 isSelected
-                  ? 'bg-purple-600 text-white shadow-sm'
+                  ? (type === 'dish' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-blue-600 text-white shadow-sm')
                   : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
               } ${!canToggle ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
@@ -1089,7 +1089,7 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
       )}
 
       <div className={`flex items-center flex-shrink-0 ${potluck.guestsLocked ? 'gap-6' : 'gap-3'}`}>
-        <div className={`${potluck.guestsLocked ? 'w-10 h-10' : 'w-4 h-4'} rounded-lg flex-shrink-0 border border-black/5 bg-purple-50 flex items-center justify-center text-purple-500`}>
+        <div className={`${potluck.guestsLocked ? 'w-10 h-10' : 'w-4 h-4'} rounded-xl flex-shrink-0 border border-black/5 bg-green-50 flex items-center justify-center text-green-500`}>
           <Users size={potluck.guestsLocked ? 16 : 6} />
         </div>
         <div className="relative min-w-[120px]">
@@ -1108,11 +1108,11 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
                   }
                 }}
                 onBlur={() => handleSave()}
-                className="absolute inset-0 w-full px-4 py-2 bg-purple-100 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-base"
+                className="absolute inset-0 w-full px-4 py-2 bg-green-100 border border-transparent rounded-xl focus:bg-white focus:border-green-500 focus:outline-none transition-all text-base"
               />
             </>
           ) : (
-            <div className={`${potluck.guestsLocked ? 'px-6 py-4 text-xl' : 'px-4 py-2 text-base'} font-bold text-zinc-900 truncate bg-purple-100 rounded-xl`}>{guest.name || "Guest"}</div>
+            <div className={`${potluck.guestsLocked ? 'px-6 py-4 text-xl' : 'px-4 py-2 text-base'} font-bold text-zinc-900 truncate bg-green-100 rounded-xl`}>{guest.name || "Guest"}</div>
           )}
         </div>
       </div>
@@ -1983,11 +1983,11 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       </DndContext>
 
         {/* Guests Section */}
-        <div className="w-full mt-12 mb-[10px]">
-          <div className="bg-purple-50/30 border border-purple-100/50 rounded-3xl overflow-hidden shadow-sm">
-            <div className="px-6 py-5 border-b border-purple-100/50 bg-purple-100/30 flex items-center justify-between">
+        <div className="w-full mt-6 mb-[10px]">
+          <div className="bg-green-50/30 border border-green-100/50 rounded-3xl overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-green-100/50 bg-green-100/30 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-zinc-900">
-                <Users size={16} className="text-purple-500" />
+                <Users size={16} className="text-green-500" />
                 Guests ({potluck.guests.length})
               </div>
               <div className="flex items-center gap-2">
@@ -2003,7 +2003,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
                 {canEdit && !potluck.guestsLocked && (
                   <button 
                     onClick={addGuest}
-                    className="p-1.5 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all"
+                    className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all"
                   >
                     <Plus size={16} />
                   </button>
@@ -2037,7 +2037,7 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
               {canEdit && !potluck.guestsLocked && (
                 <button 
                   onClick={addGuest}
-                  className="w-full py-4 mt-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 hover:text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50 transition-all flex items-center justify-center gap-2 font-medium"
+                  className="w-full py-4 mt-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 hover:text-green-600 hover:border-green-400 hover:bg-green-50 transition-all flex items-center justify-center gap-2 font-medium"
                 >
                   <Plus size={20} />
                   Add Another Guest
