@@ -1030,7 +1030,7 @@ const DishItem: React.FC<DishItemProps> = ({
               disabled={!canToggle}
               onClick={() => toggleOwner(dish.id, guest.id, type)}
               className={`rounded-full font-bold transition-all flex items-center gap-1 ${
-                dish.locked ? 'px-3.5 py-1.5 text-sm shadow-sm' : 'px-1.5 py-0 text-[9px]'
+                dish.locked ? 'px-3.5 py-1.5 text-sm shadow-sm' : 'px-2.5 py-1 text-[13.5px]'
               } ${
                 isSelected
                   ? 'bg-purple-600 text-white shadow-sm'
@@ -1836,8 +1836,8 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
         <div className="flex flex-col gap-4">
           {/* Dishes Section */}
           <div className="w-full" id="dishes-container">
-            <div className="bg-zinc-50 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
-              <div className="px-6 py-5 border-b border-black/5 bg-zinc-100 flex items-center justify-between">
+            <div className="bg-green-50/30 border border-green-100/50 rounded-3xl overflow-hidden shadow-sm">
+              <div className="px-6 py-5 border-b border-green-100/50 bg-green-100/30 flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-zinc-900">
                   <Utensils size={20} className="text-green-500" />
                   Dishes ({potluck.dishes.length})
@@ -1909,8 +1909,8 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
 
           {/* Other Items Section */}
           <div className="w-full" id="other-container">
-            <div className="bg-zinc-50 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
-              <div className="px-6 py-5 border-b border-black/5 bg-zinc-100 flex items-center justify-between">
+            <div className="bg-blue-50/30 border border-blue-100/50 rounded-3xl overflow-hidden shadow-sm">
+              <div className="px-6 py-5 border-b border-blue-100/50 bg-blue-100/30 flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-zinc-900">
                   <Package size={20} className="text-blue-600" />
                   Other Items ({(potluck.otherItems || []).length})
@@ -1983,9 +1983,9 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
       </DndContext>
 
         {/* Guests Section */}
-        <div className="w-full mb-[10px]">
-          <div className="bg-zinc-50/50 border border-black/5 rounded-3xl overflow-hidden shadow-sm">
-            <div className="px-6 py-5 border-b border-black/5 bg-zinc-100/50 flex items-center justify-between">
+        <div className="w-full mt-12 mb-[10px]">
+          <div className="bg-purple-50/30 border border-purple-100/50 rounded-3xl overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-purple-100/50 bg-purple-100/30 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-zinc-900">
                 <Users size={16} className="text-purple-500" />
                 Guests ({potluck.guests.length})
