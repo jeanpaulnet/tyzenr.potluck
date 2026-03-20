@@ -1097,7 +1097,7 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
           {canEditThisGuest ? (
             <div className="flex gap-2 items-center">
               <div className="relative flex-1">
-                <span className="invisible whitespace-pre px-4 py-2 block min-h-[42px] text-base">{guest.name || "Guest name"}</span>
+                <span className="invisible whitespace-pre px-4 py-2 block min-h-[42px] text-sm">{guest.name || "Guest name"}</span>
                 <input 
                   type="text" 
                   value={guest.name}
@@ -1110,7 +1110,7 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className="absolute inset-0 w-full px-4 py-2 bg-purple-100 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-base font-bold text-purple-700"
+                  className="absolute inset-0 w-full px-4 py-2 bg-purple-100 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-sm font-bold text-purple-700"
                 />
               </div>
               <div className="w-14 relative group/tooltip">
@@ -1129,14 +1129,14 @@ const GuestItem = ({ guest, potluck, canEdit, isOwner, updateGuest, removeGuest,
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className="w-full px-2 py-2 bg-purple-100 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-center text-base font-medium"
+                  className="w-full px-2 py-2 bg-purple-100 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-center text-sm font-medium"
                 />
               </div>
             </div>
           ) : (
             <div className="flex gap-2 items-center">
-              <div className={`${potluck.guestsLocked ? 'px-6 py-4 text-xl' : 'px-4 py-2 text-base'} font-bold text-purple-700 truncate bg-purple-100 rounded-xl flex-1`}>{guest.name || "Guest"}</div>
-              <div className={`${potluck.guestsLocked ? 'w-12 h-12 text-lg' : 'w-10 h-10 text-base'} font-bold text-purple-600 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0`}>
+              <div className={`${potluck.guestsLocked ? 'px-6 py-4 text-base' : 'px-4 py-2 text-sm'} font-bold text-purple-700 truncate bg-purple-100 rounded-xl flex-1`}>{guest.name || "Guest"}</div>
+              <div className={`${potluck.guestsLocked ? 'w-12 h-12 text-base' : 'w-10 h-10 text-sm'} font-bold text-purple-600 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0`}>
                 {guest.headCount || 1}
               </div>
             </div>
