@@ -813,10 +813,14 @@ const HomePage = ({ user }: { user: User | null }) => {
               
               <h3 className="text-xl font-bold text-zinc-900 mb-5 group-hover:text-emerald-600 transition-colors">{p.title}</h3>
               
-              <div className="flex items-center gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-3 text-xs">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 text-zinc-600 rounded-xl font-bold border border-black/5">
                   <Users size={14} />
                   {p.guests.length} Guests
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-600 rounded-xl font-bold border border-purple-100/50">
+                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full" />
+                  {p.guests.reduce((sum, g) => sum + (g.headCount || 0), 0)} Heads
                 </div>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl font-bold border border-emerald-100/50">
                   <Utensils size={14} />
@@ -1056,7 +1060,7 @@ const DishItem: React.FC<DishItemProps> = ({
                     }
                   }}
                   onBlur={() => handleSave()}
-                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 bg-white/90 border border-transparent rounded-xl focus:outline-none transition-all font-semibold text-zinc-900 text-sm ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-600'}`}
+                  className={`w-full sm:flex-1 min-w-0 px-3 py-1.5 ${type === 'dish' ? 'bg-emerald-200' : 'bg-blue-200'} border border-transparent rounded-xl focus:outline-none transition-all font-semibold text-zinc-900 text-sm ${type === 'dish' ? 'focus:border-green-500' : 'focus:border-blue-600'}`}
                 />
                 <input 
                   type="text" 
@@ -1075,7 +1079,7 @@ const DishItem: React.FC<DishItemProps> = ({
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 w-full min-w-0">
-                <div className="font-semibold text-zinc-900 text-sm truncate sm:flex-1 min-w-0">{dish.name || (type === 'dish' ? "Unnamed Dish" : "Unnamed Item")}</div>
+                <div className={`font-semibold text-zinc-900 text-sm truncate sm:flex-1 min-w-0 ${type === 'dish' ? 'bg-emerald-200' : 'bg-blue-200'} px-3 py-1.5 rounded-xl`}>{dish.name || (type === 'dish' ? "Unnamed Dish" : "Unnamed Item")}</div>
                 {dish.description && (
                   <div className="px-3 py-1 bg-white/80 rounded-lg text-zinc-900 text-xs leading-tight sm:flex-1 min-w-0 break-words">{dish.description}</div>
                 )}
