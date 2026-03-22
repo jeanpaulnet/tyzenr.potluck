@@ -2030,23 +2030,26 @@ const PotluckDetail = ({ user }: { user: User | null }) => {
             </button>
           </div>
           {isOwner && (
-            <button 
-              onClick={() => {
-                const updated = { ...potluck, showPaidCheckboxes: !potluck.showPaidCheckboxes };
-                setPotluck(updated);
-                potluckRef.current = updated;
-                handleSave();
-              }}
-              className={`px-4 py-2 rounded-2xl transition-all shadow-sm border flex items-center gap-2 font-bold text-sm ${
-                potluck.showPaidCheckboxes 
-                ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:bg-zinc-100'
-              }`}
-              title="Show Paid/Unpaid checkboxes for guests"
-            >
-              <Check size={18} className={potluck.showPaidCheckboxes ? 'text-emerald-500' : 'text-zinc-400'} />
-              Show Paid boxes
-            </button>
+            <div className="relative group/tooltip">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl">
+                {potluck.showPaidCheckboxes ? 'Hide Paid boxes' : 'Show Paid boxes'}
+              </div>
+              <button 
+                onClick={() => {
+                  const updated = { ...potluck, showPaidCheckboxes: !potluck.showPaidCheckboxes };
+                  setPotluck(updated);
+                  potluckRef.current = updated;
+                  handleSave();
+                }}
+                className={`p-3 rounded-2xl transition-all shadow-sm border flex items-center justify-center ${
+                  potluck.showPaidCheckboxes 
+                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                  : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:bg-zinc-100'
+                }`}
+              >
+                <Check size={20} className={potluck.showPaidCheckboxes ? 'text-emerald-500' : 'text-zinc-400'} />
+              </button>
+            </div>
           )}
           {isOwner && (
             <button 
