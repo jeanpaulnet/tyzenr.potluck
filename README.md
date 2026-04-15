@@ -3,24 +3,8 @@
 </a>
 
 
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+Sample https://www.potluck.place/potluck/9d3441ad-24ab-48e8-ba1b-44f229d5fc8b
 
+90% Time & Cost Reduction in Development of Scanning Websites, Creating UX, User Authentication
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/0a1c2dc5-d655-4f1a-be77-631259954231
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+AI Magic!
